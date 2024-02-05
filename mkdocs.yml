@@ -1,6 +1,6 @@
 site_name: Template Python project
-repo_url: "https://gitlab.pasqal.com/pqs/template-python-project"
-repo_name: "template_python_project"
+repo_url: "https://github.com/pasqal-io/qadence-libs.git"
+repo_name: "qadence_libs"
 
 nav:
   - Overview: index.md
@@ -62,7 +62,7 @@ plugins:
           docstring_section_style: spacy
 
 watch:
-  - template_python
+  - qadence_libs
 
 extra:
  version:

@@ -3,69 +3,66 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "template_python"
-description = "Pasqal quantum libraries template project in Python"
+name = "qadence-libs"
+description = "Libraries to extend Qadence functionalities."
 readme = "README.md"
-version = "0.3.0"
-requires-python = ">=3.9"
-license = {text = "Proprietary"}
-keywords = ["quantum"]
 authors = [
-  { name = "Mario Dagrada", email = "mario.dagrada@pasqal.com" },
-]
-classifiers = [
-  "Development Status :: 4 - Beta",
-  "Programming Language :: Python",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: Implementation :: CPython",
-  "Programming Language :: Python :: Implementation :: PyPy",
-]
+    { name = "Mario Dagrada", email = "mario.dagrada@pasqal.com" },
+    { name = "Roland Guichard", email = "roland.guichard@pasqal.com" },
+    { name = "Raja Selvarajan", email = "raja.selvarajan@pasqal.com" },
+    { name = "Gergana Velikova", email = "gergana.velikova@pasqal.com" },
 
-# always specify a version for each package
-# to maintain consistency
+]
+requires-python = ">=3.9,<3.12"
+license = {text = "Apache 2.0"}
+keywords = ["quantum"]
+version = "0.1.1"
+classifiers=[
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
 dependencies = [
-  "pulser>=0.15.0"
+    "torch",
+    "qutip==4.7.2",
+    "qadence[braket, pulser, horqrux]==1.2.7",
 ]
 
 [tool.hatch.metadata]
 allow-direct-references = true
 allow-ambiguous-features = true
 
-# add one or more extras in the dependencies
-[project.optional-dependencies]
-extras = [
-  "pyqtorch",
-  "matplotlib>=3.5.0"
-]
-
-# uncomment to enable installing libraries from the PASQAL private PyPi repository
-# use a GitLab personal access token with registry permissions enable as credentials
-#[tool.hatch.envs.default.env-vars]
-#PIP_EXTRA_INDEX_URL = "https://{env:PYPI_USERNAME}:{env:PYPI_PASSWORD}@gitlab.pasqal.com/api/v4/projects/190/packages/pypi/simple"
-
-[project.urls]
-Documentation = "https://pqs.pages.pasqal.com/template-python-project/"
-Issues = "https://gitlab.pasqal.com/pqs/template-python-project/-/issues"
-Source = "https://gitlab.pasqal.com/pqs/template-python-project"
-
 [tool.hatch.envs.default]
-features = ["extras"]
 dependencies = [
+  "flaky",
+  "hypothesis",
   "pytest",
   "pytest-cov",
+  "pytest-mypy",
   "pytest-xdist",
-  "nbconvert",
   "ipykernel",
   "pre-commit",
   "black",
-  "ruff"
+  "isort",
+  "ruff",
+  "pydocstringformatter",
 ]
+
+[tool.hatch.envs.default.scripts]
+test = "pytest -n auto --cov-report lcov --cov-config=pyproject.toml --cov=qadence_libs --cov=tests --ignore=./tests/test_examples.py {args}"
+test-examples = "pytest ./tests/test_examples.py {args}"
+no-cov = "cov --no-cov {args}"
+test-docs = "mkdocs build --clean --strict"
+test-all = "pytest -n auto {args}  && mkdocs build --clean --strict"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = """-vvv --cov-report=term-missing --cov-config=pyproject.toml --cov=template_python --cov=tests"""
+addopts = """-vvv"""
 xfail_strict = true
 filterwarnings = [
   "ignore:Call to deprecated create function FieldDescriptor",
@@ -74,8 +71,10 @@ filterwarnings = [
   "ignore:Call to deprecated create function EnumValueDescriptor",
   "ignore:Call to deprecated create function FileDescriptor",
   "ignore:Call to deprecated create function OneofDescriptor",
-  "ignore:distutils Version classes are deprecated."
+  "ignore:distutils Version classes are deprecated.",
+  "ignore::DeprecationWarning"
 ]
+
 
 [tool.hatch.envs.docs]
 dependencies = [
@@ -90,25 +89,30 @@ dependencies = [
 ]
 
 [tool.hatch.envs.docs.scripts]
-build = "mkdocs build --clean --strict {args}"
+build = "mkdocs build --clean --strict"
 serve = "mkdocs serve --dev-addr localhost:8000"
-test = "mkdocs build --clean --strict"
 
 [[tool.hatch.envs.test.matrix]]
-python = ["39", "310", "311"]
+python = ["39", "310"]
+
+# [tool.hatch.envs.tests]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "/.gitignore",
+  "/.gitlab-ci-yml",
+  "/.pre-commit-config.yml",
+  "/tests",
+  "/docs",
+  "/examples",
+]
 
 [tool.hatch.build.targets.wheel]
-packages = ["template_python"]
+packages = ["qadence_libs"]
 
 [tool.coverage.run]
 branch = true
 parallel = true
-# uncomment to omit any file from the
-# coverage. Regexps can be used
-# to select all files from a folder
-#omit = [
-#  "template_python/to_omit.py",
-#]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -119,7 +123,7 @@ exclude_lines = [
 
 [tool.ruff]
 select = ["E", "F", "I", "Q"]
-extend-ignore = ["F841"]
+extend-ignore = ["F841","F403"]
 line-length = 100
 
 [tool.ruff.isort]
@@ -133,6 +137,23 @@ max-complexity = 15
 
 [tool.ruff.flake8-quotes]
 docstring-quotes = "double"
+
+[tool.black]
+line-length = 100
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
 
 [tool.mypy]
 python_version = "3.10"
