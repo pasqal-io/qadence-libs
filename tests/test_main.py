@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from template_python.main import main
+from qadence_libs.main import main
 
 expected_msg = "Pasqal template Python project"
 
