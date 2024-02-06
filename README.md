@@ -1,116 +1,63 @@
-# Template Python project
+# Qadence-Libs
 
-This is a template Python project which can be used to bootstrap a new library in the Pasqal quantum software codebase.
+**Qadence-Libs** is a Python package that provides extra functionality for Qadence.
 
-## Development tools
-
-The library uses the following tools:
-
-* [hatch](https://hatch.pypa.io/latest/) for managing virtual environment and dependencies
-* [pytest](https://docs.pytest.org/en/7.2.x/contents.html) for building the unit tests suite
-* [black](https://black.readthedocs.io/en/stable/), [isort](https://pycqa.github.io/isort/) and [flake8](https://flake8.pycqa.org/en/latest/) for code formatting and linting
-* [mypy](https://mypy.readthedocs.io/en/stable/) for static type checking
-* [pre-commit](https://pre-commit.com/) for applying linting and formatting automatically before committing new code
-
-We recommend to use [`pyenv`](https://github.com/pyenv/pyenv) for managing
-python versions for managing python versions both globally and locally:
-```bash
-# System-wide install of a python version.
-pyenv install 3.10
-
-# Use 3.10 everywhere.
-pyenv global 3.10
-
-# Or locally in the current directory.
-pyenv local 3.10
-```
+[![Linting](https://github.com/pasqal-io/qadence-libs/actions/workflows/lint.yml/badge.svg)](https://github.com/pasqal-io/qadence-libs/actions/workflows/lint.yml)
+[![Tests](https://github.com/pasqal-io/qadence-libs/actions/workflows/test_fast.yml/badge.svg)](https://github.com/pasqal-io/qadence-libs/actions/workflows/test.yml)
+[![Documentation](https://github.com/pasqal-io/qadence-libs/actions/workflows/build_docs.yml/badge.svg)](https://pasqal-io.github.io/qadence-libs/latest)
+[![Pypi](https://badge.fury.io/py/qadence-libs.svg)](https://pypi.org/project/qadence-libs/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 
-## Install from registry
+## Installation guide
 
-Before you can install the library from the private Pasqal PyPi, make sure to ask for `PYPI_USERNAME` and `PYPI_PASSWORD` on the relevant Slack channel.
-You can then set the credentials as environment variables via:
+[PyPI](https://pypi.org/project/qadence-libs/) and can be installed using `pip` as follows:
 
 ```bash
-export PYPI_USERNAME=MYUSERNAME
-export PYPI_PASSWORD=THEPASSWORD
+pip install qadence_libs
 ```
 
-You are then able to install the latest version of `template-python-project` from the Pasqal private PyPi.
+## Contributing
 
+Before making a contribution, please review our [code of conduct](docs/CODE_OF_CONDUCT.md).
 
-## Install from source
+- **Submitting Issues:** To submit bug reports or feature requests, please use our [issue tracker](https://github.com/pasqal-io/qadence-libs/issues).
+- **Developing in qadence:** To learn more about how to develop within `qadence`, please refer to [contributing guidelines](docs/CONTRIBUTING.md).
 
-All Pasqal quantum libraries require Python >=3.8. For development, the preferred method to install this package is
-to use `hatch`. You can install from source by cloning this repository and run:
+### Setting up qadence in development mode
+
+We recommend to use the [`hatch`](https://hatch.pypa.io/latest/) environment manager to install `qadence_libs` from source:
 
 ```bash
 python -m pip install hatch
-python -m hatch -v shell
 
-# execute any script using the library
-python my_script.py
+# get into a shell with all the dependencies
+python -m hatch shell
+
+# run a command within the virtual environment with all the dependencies
+python -m hatch run python my_script.py
 ```
 
-Alternatively, you can also:
-
-* install with `pip` in development mode by simply running `pip install -e .`. Notice that in this way
-  you will install all the dependencies, including extras.
-* install it with `conda` by simply using `pip` inside the Conda environment.
-
-
-## Develop
-
-When developing the package, the recommended way is to create a virtual environment with `hatch` as shown above:
+**WARNING**
+`hatch` will not combine nicely with other environment managers such as Conda. If you still want to use Conda,
+install it from source using `pip`:
 
 ```bash
-python -m pip install hatch
-python -m hatch -v shell
+# within the Conda environment
+python -m pip install -e .
 ```
 
-When inside the shell with development dependencies, install first the pre-commit hook:
-```
-pre-commit install
-```
+## Citation
 
-In this way, you will get automatic linting and formatting every time you commit new code. Do not
-forget to run the unit test suite by simply running the `pytest` command.
+If you use Qadence-Libs for a publication, we kindly ask you to cite our work using the following BibTex entry:
 
-If you do not want to get into the Hatch shell, you can alternatively do the following:
-
-```bash
-python -m pip install hatch
-python -m hatch -v shell
-
-# install the pre-commit
-python -m hatch run pre-commit install
-
-# commit some code
-python -m hatch run git commit -m "My awesome commit"
-
-# run the unit tests suite
-python -m hatch run pytest
-
+```latex
+@misc{qadence-libs2024pasqal,
+  url = {https://github.com/pasqal-io/qadence-libs},
+  title = {Qadence Libs: {A}n {E}xperiment runner for Qadence.},
+  year = {2023}
+}
 ```
 
-## Document
-
-You can improve the documentation of the package by editing this file for the landing page or adding new
-markdown or Jupyter notebooks to the `docs/` folder in the root of the project. In order to modify the
-table of contents, edit the `mkdocs.yml` file in the root of the project.
-
-In order to build and serve the documentation locally, you can use `hatch` with the right environment:
-
-```bash
-python -m hatch -v run docs:build
-python -m hatch -v run docs:serve
-```
-
-If you don't want to use `hatch`, just check into your favorite virtual environment and
-execute the following commands:
-
-```bash
-python -m pip install -r docs/requirements.txt
-mkdocs build
-mkdocs serve
-```
+## License
+Qadence-Libs is a free and open source software package, released under the Apache License, Version 2.0.
