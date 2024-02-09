@@ -34,27 +34,6 @@ RS_FUNC_DICT = {
 }
 
 
-def backwards_compatibility(
-    fm_type: BasisSet | Callable | str,
-    reupload_scaling: ReuploadScaling | Callable | str,
-) -> tuple:
-    if fm_type in ("fourier", "chebyshev", "tower"):
-        logger.warning(
-            "Selecting `fm_type` as 'fourier', 'chebyshev' or 'tower' is deprecated. "
-            "Please use the respective enumerations: 'fm_type = BasisSet.FOURIER', "
-            "'fm_type = BasisSet.CHEBYSHEV' or 'reupload_scaling = ReuploadScaling.TOWER'."
-        )
-        if fm_type == "fourier":
-            fm_type = BasisSet.FOURIER
-        elif fm_type == "chebyshev":
-            fm_type = BasisSet.CHEBYSHEV
-        elif fm_type == "tower":
-            fm_type = BasisSet.CHEBYSHEV
-            reupload_scaling = ReuploadScaling.TOWER
-
-    return fm_type, reupload_scaling
-
-
 def fm_parameter_scaling(
     fm_type: BasisSet | Callable | str,
     param: Parameter | str = "phi",
@@ -192,9 +171,6 @@ def feature_map(
             f"Operation {op} not supported. "
             f"Please provide one from {[rot.__name__ for rot in ROTATIONS]}."
         )
-
-    # Backwards compatibility
-    fm_type, reupload_scaling = backwards_compatibility(fm_type, reupload_scaling)
 
     scaled_fparam = fm_parameter_scaling(
         fm_type, param, feature_range=feature_range, target_range=target_range
