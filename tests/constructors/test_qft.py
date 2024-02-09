@@ -8,12 +8,13 @@ from qadence import (
     QuantumCircuit,
     QuantumModel,
     hamiltonian_factory,
-    qft,
     random_state,
 )
 from qadence.states import equivalent_state
 from qadence.types import PI, Strategy
 from torch import Tensor, allclose, cdouble, exp, matmul, tensor, zeros
+
+from qadence_libs.constructors import qft
 
 
 def test_qft() -> None:

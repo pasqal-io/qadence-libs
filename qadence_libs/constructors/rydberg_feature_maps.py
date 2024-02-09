@@ -4,12 +4,13 @@ from typing import Callable
 
 import numpy as np
 from qadence.blocks import AnalogBlock, KronBlock, kron
-from qadence.constructors.feature_maps import fm_parameter_func, fm_parameter_scaling
 from qadence.logger import get_logger
 from qadence.operations import AnalogRot, AnalogRX, AnalogRY, AnalogRZ
 from qadence.parameters import FeatureParameter, Parameter, VariationalParameter
 from qadence.types import PI, BasisSet, ReuploadScaling, TParameter
 from sympy import Basic
+
+from qadence_libs.constructors.feature_maps import fm_parameter_func, fm_parameter_scaling
 
 logger = get_logger(__file__)
 

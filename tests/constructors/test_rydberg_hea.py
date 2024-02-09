@@ -5,19 +5,19 @@ import torch
 from qadence.blocks import CompositeBlock
 from qadence.blocks.analog import ConstantAnalogRotation
 from qadence.circuit import QuantumCircuit
-from qadence.constructors import (
-    analog_feature_map,
-    hamiltonian_factory,
-    rydberg_feature_map,
-    rydberg_hea,
-    rydberg_tower_feature_map,
-    total_magnetization,
-)
+from qadence.constructors import hamiltonian_factory, total_magnetization
 from qadence.models import QuantumModel
 from qadence.operations import AnalogRY, X
 from qadence.parameters import VariationalParameter
 from qadence.register import Register
 from qadence.types import PI, BasisSet
+
+from qadence_libs.constructors import (
+    analog_feature_map,
+    rydberg_feature_map,
+    rydberg_hea,
+    rydberg_tower_feature_map,
+)
 
 
 @pytest.mark.parametrize("detunings", [True, False])
