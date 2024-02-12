@@ -48,7 +48,7 @@ def hea(
     Examples:
     ```python exec="on" source="material-block" result="json"
     from qadence import RZ, RX
-    from qadence import hea
+    from qadence_libs import hea
 
     # create the circuit
     n_qubits, depth = 2, 4
