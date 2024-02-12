@@ -17,9 +17,6 @@ from .qft import qft
 # Modules to be automatically added to the qadence namespace
 __all__ = [
     "feature_map",
-    "chebyshev_feature_map",
-    "fourier_feature_map",
-    "tower_feature_map",
     "exp_fourier_feature_map",
     "hea",
     "identity_initialized_ansatz",
