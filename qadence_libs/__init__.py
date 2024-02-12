@@ -20,5 +20,5 @@ list_of_submodules = [
 
 __all__ = []
 for submodule in list_of_submodules:
-    __all_submodule__ = getattr(import_module(submodule, package="qadence"), "__all__")
+    __all_submodule__ = getattr(import_module(submodule, package="qadence_libs"), "__all__")
     __all__ += __all_submodule__

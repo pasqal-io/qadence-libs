@@ -2,9 +2,6 @@
 
 from .feature_maps import (
     feature_map,
-    chebyshev_feature_map,
-    fourier_feature_map,
-    tower_feature_map,
     exp_fourier_feature_map,
 )
 
