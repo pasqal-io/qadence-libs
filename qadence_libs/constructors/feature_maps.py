@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from collections.abc import Callable
 from math import isclose
 from typing import Union
@@ -196,65 +195,6 @@ def feature_map(
 
     fm.tag = rs_tag + " " + basis_tag + " FM"
 
-    return fm
-
-
-def fourier_feature_map(
-    n_qubits: int, support: tuple[int, ...] = None, param: str = "phi", op: RotationTypes = RX
-) -> AbstractBlock:
-    """Construct a Fourier feature map.
-
-    Args:
-        n_qubits: number of qubits across which the FM is created
-        param: The base name for the feature `Parameter`
-    """
-    warnings.warn(
-        "Function 'fourier_feature_map' is deprecated. Please use 'feature_map' directly.",
-        FutureWarning,
-    )
-    fm = feature_map(n_qubits, support=support, param=param, op=op, fm_type=BasisSet.FOURIER)
-    return fm
-
-
-def chebyshev_feature_map(
-    n_qubits: int, support: tuple[int, ...] = None, param: str = "phi", op: RotationTypes = RX
-) -> AbstractBlock:
-    """Construct a Chebyshev feature map.
-
-    Args:
-        n_qubits: number of qubits across which the FM is created
-        support (Iterable[int]): The qubit support
-        param: The base name for the feature `Parameter`
-    """
-    warnings.warn(
-        "Function 'chebyshev_feature_map' is deprecated. Please use 'feature_map' directly.",
-        FutureWarning,
-    )
-    fm = feature_map(n_qubits, support=support, param=param, op=op, fm_type=BasisSet.CHEBYSHEV)
-    return fm
-
-
-def tower_feature_map(
-    n_qubits: int, support: tuple[int, ...] = None, param: str = "phi", op: RotationTypes = RX
-) -> AbstractBlock:
-    """Construct a Chebyshev tower feature map.
-
-    Args:
-        n_qubits: number of qubits across which the FM is created
-        param: The base name for the feature `Parameter`
-    """
-    warnings.warn(
-        "Function 'tower_feature_map' is deprecated. Please use feature_map directly.",
-        FutureWarning,
-    )
-    fm = feature_map(
-        n_qubits,
-        support=support,
-        param=param,
-        op=op,
-        fm_type=BasisSet.CHEBYSHEV,
-        reupload_scaling=ReuploadScaling.TOWER,
-    )
     return fm
 
 
