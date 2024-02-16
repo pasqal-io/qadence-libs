@@ -9,9 +9,10 @@ readme = "README.md"
 authors = [
     { name = "Mario Dagrada", email = "mario.dagrada@pasqal.com" },
     { name = "Roland Guichard", email = "roland.guichard@pasqal.com" },
-    { name = "Raja Selvarajan", email = "raja.selvarajan@pasqal.com" },
-    { name = "Gergana Velikova", email = "gergana.velikova@pasqal.com" },
-
+    { name = "João Moutinho", email = "joao.moutinho@pasqal.com" },
+    { name = "Vincent Elfving", email = "vincent.elfving@pasqal.com" },
+    { name = "Dominik Seitz", email = "dominik.seitz@pasqal.com" },
+    { name = "Niklas Heim", email = "niklas.heim@pasqal.com" },
 ]
 requires-python = ">=3.9,<3.12"
 license = {text = "Apache 2.0"}
@@ -29,13 +30,17 @@ classifiers=[
 ]
 dependencies = [
     "torch",
-    "qutip==4.7.2",
     "qadence[braket, pulser, horqrux]==1.2.7",
 ]
 
 [tool.hatch.metadata]
 allow-direct-references = true
 allow-ambiguous-features = true
+
+[project.optional-dependencies]
+visualization = [
+  "graphviz",
+]
 
 [tool.hatch.envs.default]
 dependencies = [
@@ -52,6 +57,8 @@ dependencies = [
   "ruff",
   "pydocstringformatter",
 ]
+
+features = ["visualization"]
 
 [tool.hatch.envs.default.scripts]
 test = "pytest -n auto --cov-report lcov --cov-config=pyproject.toml --cov=qadence_libs --cov=tests --ignore=./tests/test_examples.py {args}"
