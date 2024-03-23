@@ -74,7 +74,7 @@ class QNG_SPSA(Optimizer):
         beta: float = 10e-3,
         epsilon: float = 10e-2,
     ):
-        self.iteration = iteration
+        self.current_iteration = iteration
         self.prev_qfi_estimator = 0
         defaults = dict(
             circuit=circuit,
@@ -105,7 +105,7 @@ class QNG_SPSA(Optimizer):
                 # Get estimation of the QFI matrix
                 qfi_estimator, qfi_mat_positive_sd = get_quantum_fisher_spsa(
                     circuit=group["circuit"],
-                    k=self.iteration,
+                    k=self.current_iteration,
                     vparams_values=group["params"],
                     previous_qfi_estimator=self.prev_qfi_estimator,
                     epsilon=group["epsilon"],
@@ -122,7 +122,7 @@ class QNG_SPSA(Optimizer):
                         continue
                     p.data.add_(transf_grad[i], alpha=-group["lr"])
 
-            self.iteration += 1
+            self.current_iteration += 1
             self.prev_qfi_estimator = qfi_estimator
 
         return loss

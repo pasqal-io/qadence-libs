@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import numpy as np
 import torch
 from torch import Tensor
 from torch.autograd import grad
@@ -10,14 +9,73 @@ from qadence.types import OverlapMethod, BackendName, DiffMode
 from qadence.blocks import parameters, primitive_blocks
 from qadence.circuit import QuantumCircuit
 
+from qadence_libs.qinfo_tools.spsa import spsa_2gradient
 
-def symsqrt(A):
-    """Compute the square root of a Symmetric or Hermitian positive definite matrix or batch of matrices"""
+
+def _symsqrt(A):
+    """Compute the square root of a Symmetric or Hermitian positive definite matrix or batch of matrices.
+    Code from https://github.com/pytorch/pytorch/issues/25481#issuecomment-1032789228"""
     L, Q = torch.linalg.eigh(A)
     zero = torch.zeros((), device=L.device, dtype=L.dtype)
     threshold = L.max(-1).values * L.size(-1) * torch.finfo(L.dtype).eps
     L = L.where(L > threshold.unsqueeze(-1), zero)  # zero out small components
     return (Q * L.sqrt().unsqueeze(-2)) @ Q.mH
+
+
+def _set_circuit_vparams(circuit, vparams_values):
+    if vparams_values is not None:
+        blocks = primitive_blocks(circuit.block)
+        for i, block in enumerate(blocks):
+            params = parameters(block)
+            for p in params:
+                if p.trainable:
+                    p.value = float(vparams_values[i])
+
+
+def _set_fm_dict(fm_dict, circuit):
+    blocks = primitive_blocks(circuit.block)
+    for block in blocks:
+        params = parameters(block)
+        for p in params:
+            if not p.trainable:
+                fm_dict[p.name] = torch.tensor([p.value])
+
+
+def hessian(output: Tensor, inputs: list) -> Tensor:
+    """Calculates the Hessian of a given output vector wrt the inputs.
+
+    This is not an efficient method. Probably better to use autograd functions but grad tree is broken by the Overlap method
+
+    Args:
+        output (Tensor): _description_
+        inputs (list): _description_
+
+    Returns:
+        Tensor: _description_
+    """
+
+    jacobian = grad(
+        output,
+        inputs,
+        torch.ones_like(output),
+        create_graph=True,
+        allow_unused=True,
+    )
+
+    n_params = len(inputs)
+    hess = torch.empty((n_params, n_params))
+    for i in range(n_params):
+        ovrlp_grad2 = grad(
+            jacobian[i],
+            inputs,
+            torch.ones_like(jacobian[i]),
+            create_graph=True,
+            allow_unused=True,
+        )
+        for j in range(n_params):
+            hess[i, j] = ovrlp_grad2[j]
+
+    return hess
 
 
 def get_quantum_fisher(
@@ -42,87 +100,13 @@ def get_quantum_fisher(
     Returns:
         torch.Tensor: QFI matrix
     """
+
+    # If fm_dict is not provided, build the feature map dictionary
     if fm_dict == {}:
-        blocks = primitive_blocks(circuit.block)
-        for block in blocks:
-            params = parameters(block)
-            for p in params:
-                if not p.trainable:
-                    fm_dict[p.name] = torch.tensor([p.value])
+        _set_fm_dict(fm_dict, circuit)
 
     # Get Overlap() model
-    ovrlp_model = _overlap_with_ket_inputs(
-        circuit,
-        vparams_values,  # type: ignore [arg-type]
-        backend=backend,
-        overlap_method=overlap_method,
-        diff_mode=diff_mode,
-    )
-    ovrlp = ovrlp_model(bra_param_values=fm_dict, ket_param_values=fm_dict)
-
-    # Retrieve variational parameters of the overlap model
-    # Importantly, the vparams of the overlap model are the vparams of the bra tensor,
-    # Which means if we differentiate wrt vparams we are differentiating only wrt the
-    # parameters in the bra and not in the ket
-    vparams = {k: v for k, v in ovrlp_model._params.items() if v.requires_grad}
-
-    # Jacobian of the overlap
-    ovrlp_grad = grad(
-        ovrlp,
-        list(vparams.values()),
-        torch.ones_like(ovrlp),
-        create_graph=True,
-        allow_unused=True,
-    )
-
-    # Hessian of the overlap = QFI matrix
-    n_params = ovrlp_model.num_vparams
-    fid_hess = torch.empty((n_params, n_params))
-    for i in range(n_params):
-        ovrlp_grad2 = grad(
-            ovrlp_grad[i],
-            list(vparams.values()),
-            torch.ones_like(ovrlp_grad[i]),
-            create_graph=True,
-            # allow_unused=,
-        )
-        for j in range(n_params):
-            fid_hess[i, j] = ovrlp_grad2[j]
-
-    return -2 * fid_hess
-
-
-def _overlap_with_ket_inputs(
-    circuit: QuantumCircuit,
-    vparams_values: tuple | list | Tensor | None = None,
-    backend: BackendName = BackendName.PYQTORCH,  # type: ignore
-    overlap_method: OverlapMethod = OverlapMethod.EXACT,
-    diff_mode: DiffMode = DiffMode.AD,  # type: ignore
-) -> Overlap:
-    """Builds an OverlapModel consisting of the overlap of the circuit with itself.
-
-    The variational parameters of the output model correspond to the variational parameters
-    of the bra state, so we can do the differentiation properly.
-
-    Args:
-        circuit (QuantumCircuit): The Quantum circuit we want to compute the overlap of.
-        vparams (tuple): Values of the variational parameters.
-        backend (BackendName, optional): Defaults to BackendName.pyq.
-        overlap_method (OverlapMethod, optional): Defaults to OverlapMethod.EXACT.
-        diff_mode (DiffMode, optional): Defaults to DiffMode.ad.
-
-    Returns:
-        Overlap(): _description_
-    """
-    if vparams_values is not None:
-        blocks = primitive_blocks(circuit.block)
-        iter_index = iter(range(len(blocks)))
-        for block in blocks:
-            params = parameters(block)
-            for p in params:
-                if p.trainable:
-                    p.value = float(vparams_values[next(iter_index)])
-
+    _set_circuit_vparams(circuit, vparams_values)
     ovrlp_model = Overlap(
         circuit,
         circuit,
@@ -131,175 +115,19 @@ def _overlap_with_ket_inputs(
         method=overlap_method,
     )
 
-    return ovrlp_model
+    # Run overlap model
+    ovrlp = ovrlp_model(bra_param_values=fm_dict, ket_param_values=fm_dict)
 
+    # Retrieve variational parameters of the overlap model
+    # Importantly, the vparams of the overlap model are the vparams of the bra tensor,
+    # Which means if we differentiate wrt vparams we are differentiating only wrt the
+    # parameters in the bra and not in the ket
+    vparams = [v for v in ovrlp_model._params.values() if v.requires_grad]
 
-# def get_quantum_fisher(
-#     circuit: QuantumCircuit,
-#     vparams_values: tuple | list | Tensor | None = None,
-#     fm_dict: dict[str, Tensor] = {},
-#     backend: BackendName = BackendName.PYQTORCH,  # type: ignore
-#     overlap_method: OverlapMethod = OverlapMethod.EXACT,
-#     diff_mode: DiffMode = DiffMode.AD,  # type: ignore
-# ) -> Tensor:
-#     """Function to calculate the exact Quantum Fisher Information (QFI) matrix of the
-#     quantum circuit with given values for the variational parameters (vparams_values) and the
-#     feature map (fm_dict).
+    # Calculate the Hessian
+    fid_hess = hessian(ovrlp, vparams)
 
-#     Args:
-#         circuit (QuantumCircuit): The Quantum circuit we want to compute the QFI matrix of.
-#         vparams (tuple): Values of the variational parameters where we want to compute the QFI.
-#         fm_dict (dict[str, Tensor]): Values of the feature map parameters.
-#         overlap_method (OverlapMethod, optional): Defaults to OverlapMethod.EXACT.
-#         diff_mode (DiffMode, optional): Defaults to DiffMode.ad.
-
-#     Returns:
-#         torch.Tensor: QFI matrix
-#     """
-#     if fm_dict == {}:
-#         blocks = primitive_blocks(circuit.block)
-#         for block in blocks:
-#             params = parameters(block)
-#             for p in params:
-#                 if not p.trainable:
-#                     fm_dict[p.name] = torch.tensor([p.value])
-
-#     # Get Overlap() model
-#     def overlap_wrapper(vparams_values):
-#         ovrlp_model = _overlap_with_ket_inputs(
-#             circuit,
-#             vparams_values,
-#             backend=backend,
-#             overlap_method=overlap_method,
-#             diff_mode=diff_mode,
-#         )
-#         return ovrlp_model(bra_param_values=fm_dict, ket_param_values=fm_dict)
-
-#     # print("overlap_result")
-#     # print(ovrlp)
-
-#     # def overlap_wrapper(vparams_values):
-#     #     ovrlp()
-
-#     # print(vparams_values)
-#     # hess = torch.func.hessian(overlap_wrapper)(vparams_values)
-#     # print(hess)
-
-#     # Retrieve variational parameters of the overlap model
-#     # Importantly, the vparams of the overlap model are the vparams of the bra tensor,
-#     # Which means if we differentiate wrt vparams we are differentiating only wrt the
-#     # parameters in the bra and not in the ket
-#     vparams = {k: v for k, v in ovrlp_model._params.items() if v.requires_grad}
-
-#     # Jacobian of the overlap
-#     ovrlp_grad = grad(
-#         ovrlp,
-#         list(vparams.values()),
-#         torch.ones_like(ovrlp),
-#         create_graph=True,
-#         allow_unused=True,
-#     )
-
-#     # Hessian of the overlap = QFI matrix
-#     n_params = ovrlp_model.num_vparams
-#     fid_hess = torch.empty((n_params, n_params))
-#     for i in range(n_params):
-#         ovrlp_grad2 = grad(
-#             ovrlp_grad[i],
-#             list(vparams.values()),
-#             torch.ones_like(ovrlp_grad[i]),
-#             create_graph=True,
-#             allow_unused=True,
-#         )
-#         for j in range(n_params):
-#             fid_hess[i, j] = ovrlp_grad2[j]
-
-#     return -2 * fid_hess
-
-
-class OverlapGradientSPSA(Overlap):
-    def __init__(
-        self,
-        bra_circuit,
-        ket_circuit,
-        epsilon,
-        vparams_values,
-        fm_dict,
-        backend,
-        diff_mode,
-        method,
-    ):
-        super().__init__(
-            bra_circuit=bra_circuit,
-            ket_circuit=ket_circuit,
-            backend=backend,
-            diff_mode=diff_mode,
-            method=method,
-        )
-        self.epsilon = epsilon
-        self.fm_dict = fm_dict
-        self.vparams_values = vparams_values
-        self.vparams_dict = {k: v for (k, v) in self._params.items() if v.requires_grad}
-        self.vparams_tensors = torch.Tensor(vparams_values).reshape((self.num_vparams, 1))
-
-    def _shifted_ket_vparam_dict(self, shift):
-        vparams = {k: v for (k, v) in self._params.items() if v.requires_grad}
-        return dict(zip(vparams.keys(), self.vparams_tensors + shift))
-
-    def _shifted_overlap(self, shifted_vparams_dict):
-        ovrlp_shifted = super().forward(
-            bra_param_values=self.fm_dict | self.vparams_dict,
-            ket_param_values=self.fm_dict | shifted_vparams_dict,
-        )
-        return ovrlp_shifted
-
-    def _create_random_direction(self):
-        return torch.Tensor(np.random.choice([-1, 1], size=(self.num_vparams, 1)))
-
-    def first_order_gradient(self):
-        # Create random direction
-        random_direction = self._create_random_direction()
-
-        # Shift ket variational parameters
-        vparams_plus = self._shifted_ket_vparam_dict(self.epsilon * random_direction)
-        vparams_minus = self._shifted_ket_vparam_dict(-self.epsilon * random_direction)
-
-        # Overlaps with the shifted parameters
-        ovrlp_shifter_plus = self._shifted_overlap(vparams_plus)
-        ovrlp_shifter_minus = self._shifted_overlap(vparams_minus)
-
-        return (ovrlp_shifter_plus - ovrlp_shifter_minus) / (2 * self.epsilon)
-
-    def second_order_gradient(self):
-        # Create random directions
-        rand_dir1 = self._create_random_direction()
-        rand_dir2 = self._create_random_direction()
-
-        # Shift ket variational parameters
-        vparams_p1 = self._shifted_ket_vparam_dict(self.epsilon * rand_dir1)
-        vparams_p1p2 = self._shifted_ket_vparam_dict(self.epsilon * (rand_dir1 + rand_dir2))
-        vparams_m1 = self._shifted_ket_vparam_dict(-self.epsilon * rand_dir1)
-        vparams_m1p2 = self._shifted_ket_vparam_dict(self.epsilon * (-rand_dir1 + rand_dir2))
-
-        # Overlaps with the shifted parameters
-        ovrlp_shifted_p1 = self._shifted_overlap(vparams_p1)
-        ovrlp_shifted_p1p2 = self._shifted_overlap(vparams_p1p2)
-        ovrlp_shifted_m1 = self._shifted_overlap(vparams_m1)
-        ovrlp_shifted_m1p2 = self._shifted_overlap(vparams_m1p2)
-
-        # Prefactor
-        delta_F = ovrlp_shifted_p1p2 - ovrlp_shifted_p1 - ovrlp_shifted_m1p2 + ovrlp_shifted_m1
-
-        # Hessian
-        hess = (
-            (1 / 4)
-            * (delta_F / (self.epsilon**2))
-            * (
-                torch.matmul(rand_dir1, rand_dir2.transpose(0, 1))
-                + torch.matmul(rand_dir2, rand_dir1.transpose(0, 1))
-            )
-        )
-        return hess
+    return -2 * fid_hess
 
 
 def get_quantum_fisher_spsa(
@@ -327,28 +155,20 @@ def get_quantum_fisher_spsa(
     Returns:
         torch.Tensor: QFI matrix
     """
-    num_vparams = len(vparams_values) if vparams_values is not None else 0
 
+    # If fm_dict is not provided, build the feature map dictionary
     if fm_dict == {}:
-        blocks = primitive_blocks(circuit.block)
-        for block in blocks:
-            params = parameters(block)
-            for p in params:
-                if not p.trainable:
-                    fm_dict[p.name] = torch.Tensor([p.value])
+        _set_fm_dict(fm_dict, circuit)
 
     # Hessian of the overlap model via SPSA
-    spsa_gradient_model = OverlapGradientSPSA(
+    ovrlp_model = Overlap(
         circuit,
         circuit,
         backend=backend,
         diff_mode=diff_mode,
         method=overlap_method,
-        epsilon=epsilon,
-        vparams_values=vparams_values,
-        fm_dict=fm_dict,
     )
-    fid_hess = spsa_gradient_model.second_order_gradient()
+    fid_hess = spsa_2gradient(ovrlp_model, epsilon, fm_dict, vparams_values)
 
     # Quantum Fisher Information matrix
     qfi_mat = -2 * fid_hess
@@ -360,8 +180,8 @@ def get_quantum_fisher_spsa(
         qfi_mat_estimator = (1 / (k + 1)) * (k * previous_qfi_estimator + qfi_mat)  # type: ignore
 
     # Get the positive-semidefinite version of the matrix for the update rule in QNG
-    qfi_mat_positive_sd = symsqrt(torch.matmul(qfi_mat_estimator, qfi_mat_estimator))
-    qfi_mat_positive_sd = qfi_mat_positive_sd + beta * torch.eye(num_vparams)
+    qfi_mat_positive_sd = _symsqrt(torch.matmul(qfi_mat_estimator, qfi_mat_estimator))
+    qfi_mat_positive_sd = qfi_mat_positive_sd + beta * torch.eye(len(vparams_values))
 
     return qfi_mat_estimator, qfi_mat_positive_sd
 
@@ -369,11 +189,15 @@ def get_quantum_fisher_spsa(
 if __name__ == "__main__":
 
     import torch
+    import time
     import numpy as np
 
     from qadence.constructors import hea, feature_map
     from qadence.operations import *
     from qadence import QuantumCircuit
+
+    torch.manual_seed(0)
+    np.random.seed(0)
 
     torch.set_printoptions(precision=3, sci_mode=False)
 
@@ -391,12 +215,17 @@ if __name__ == "__main__":
 
     print("qadence QFI exact")
     fm_dict = {"phi": torch.Tensor([0])}
+    t0 = time.time()
     qfi_mat_exact = get_quantum_fisher(circuit, vparams_values=var_values, fm_dict=fm_dict)
+    t1 = time.time()
+    total = t1 - t0
+    print(f"Total time {total}")
     print(qfi_mat_exact)
 
     print("qadence QFI with SPSA approximation")
     qfi_mat_spsa = None
-    for k in range(1000):
+    t0 = time.time()
+    for k in range(50):
         qfi_mat_spsa, qfi_positive_sd = get_quantum_fisher_spsa(
             circuit,
             k,
@@ -404,4 +233,8 @@ if __name__ == "__main__":
             fm_dict=fm_dict,
             previous_qfi_estimator=qfi_mat_spsa,
         )
+    t1 = time.time()
+    total = t1 - t0
+    print(f"Total time {total}")
+
     print(qfi_mat_spsa)
