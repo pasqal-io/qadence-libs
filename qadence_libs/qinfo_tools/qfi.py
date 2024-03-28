@@ -9,11 +9,11 @@ from qadence.types import OverlapMethod, BackendName, DiffMode
 from qadence.blocks import parameters, primitive_blocks
 from qadence.circuit import QuantumCircuit
 
-from qadence_libs.qinfo_tools.spsa import spsa_2gradient
+from qadence_libs.qinfo_tools.spsa import spsa_2gradient as spsa_2gradient_step
 
 
 def _symsqrt(A):
-    """Compute the square root of a Symmetric or Hermitian positive definite matrix or batch of matrices.
+    """Computes the square root of a Symmetric or Hermitian positive definite matrix or batch of matrices.
     Code from https://github.com/pytorch/pytorch/issues/25481#issuecomment-1032789228"""
     L, Q = torch.linalg.eigh(A)
     zero = torch.zeros((), device=L.device, dtype=L.dtype)
@@ -23,16 +23,19 @@ def _symsqrt(A):
 
 
 def _set_circuit_vparams(circuit, vparams_values):
+    """Sets the variational parameter values of the circuit"""
     if vparams_values is not None:
         blocks = primitive_blocks(circuit.block)
-        for i, block in enumerate(blocks):
+        iter_index = iter(range(len(blocks)))
+        for block in blocks:
             params = parameters(block)
             for p in params:
                 if p.trainable:
-                    p.value = float(vparams_values[i])
+                    p.value = float(vparams_values[next(iter_index)])
 
 
-def _set_fm_dict(fm_dict, circuit):
+def _set_fm_dict(circuit, fm_dict):
+    """Sets the feature map parameter values of the circuit"""
     blocks = primitive_blocks(circuit.block)
     for block in blocks:
         params = parameters(block)
@@ -44,14 +47,12 @@ def _set_fm_dict(fm_dict, circuit):
 def hessian(output: Tensor, inputs: list) -> Tensor:
     """Calculates the Hessian of a given output vector wrt the inputs.
 
-    This is not an efficient method. Probably better to use autograd functions but grad tree is broken by the Overlap method
+        TODO: Use autograd built-in functions to compute the Hessian, but grad tree
+    is broken by the Overlap method
 
-    Args:
-        output (Tensor): _description_
-        inputs (list): _description_
-
-    Returns:
-        Tensor: _description_
+        Args:
+            output (Tensor): Output vector
+            inputs (list): List of input parameters
     """
 
     jacobian = grad(
@@ -86,8 +87,8 @@ def get_quantum_fisher(
     overlap_method: OverlapMethod = OverlapMethod.EXACT,
     diff_mode: DiffMode = DiffMode.AD,  # type: ignore
 ) -> Tensor:
-    """Function to calculate the exact Quantum Fisher Information (QFI) matrix of the
-    quantum circuit with given values for the variational parameters (vparams_values) and the
+    """Returns the exact Quantum Fisher Information (QFI) matrix of the quantum circuit
+    with given values for the variational parameters (vparams_values) and the
     feature map (fm_dict).
 
     Args:
@@ -96,17 +97,14 @@ def get_quantum_fisher(
         fm_dict (dict[str, Tensor]): Values of the feature map parameters.
         overlap_method (OverlapMethod, optional): Defaults to OverlapMethod.EXACT.
         diff_mode (DiffMode, optional): Defaults to DiffMode.ad.
-
-    Returns:
-        torch.Tensor: QFI matrix
     """
 
-    # If fm_dict is not provided, build the feature map dictionary
+    # Set FM and variational parameters
     if fm_dict == {}:
-        _set_fm_dict(fm_dict, circuit)
+        _set_fm_dict(circuit, fm_dict)
+    _set_circuit_vparams(circuit, vparams_values)
 
     # Get Overlap() model
-    _set_circuit_vparams(circuit, vparams_values)
     ovrlp_model = Overlap(
         circuit,
         circuit,
@@ -152,15 +150,9 @@ def get_quantum_fisher_spsa(
         fm_dict (dict[str, Tensor]): Values of the feature map parameters.
         overla p_method (OverlapMethod, optional): Defaults to OverlapMethod.EXACT.
         diff_mode (DiffMode, optional): Defaults to DiffMode.ad.
-    Returns:
-        torch.Tensor: QFI matrix
     """
+    _set_fm_dict(circuit, fm_dict)
 
-    # If fm_dict is not provided, build the feature map dictionary
-    if fm_dict == {}:
-        _set_fm_dict(fm_dict, circuit)
-
-    # Hessian of the overlap model via SPSA
     ovrlp_model = Overlap(
         circuit,
         circuit,
@@ -168,73 +160,26 @@ def get_quantum_fisher_spsa(
         diff_mode=diff_mode,
         method=overlap_method,
     )
-    fid_hess = spsa_2gradient(ovrlp_model, epsilon, fm_dict, vparams_values)
 
-    # Quantum Fisher Information matrix
+    # Set epsilon
+    gamma = 0.601
+    epsilon_k = epsilon / (k + 1) ** gamma
+
+    fid_hess = spsa_2gradient_step(ovrlp_model, epsilon_k, fm_dict, vparams_values)
+
+    # QFI matrix
     qfi_mat = -2 * fid_hess
 
     # Calculate the new estimator from the old estimator of qfi_mat
     if k == 0:
         qfi_mat_estimator = qfi_mat
     else:
-        qfi_mat_estimator = (1 / (k + 1)) * (k * previous_qfi_estimator + qfi_mat)  # type: ignore
+
+        a_k = 1 / (1 + k) ** 1
+        qfi_mat_estimator = a_k * (k * previous_qfi_estimator + qfi_mat)  # type: ignore
 
     # Get the positive-semidefinite version of the matrix for the update rule in QNG
     qfi_mat_positive_sd = _symsqrt(torch.matmul(qfi_mat_estimator, qfi_mat_estimator))
     qfi_mat_positive_sd = qfi_mat_positive_sd + beta * torch.eye(len(vparams_values))
 
     return qfi_mat_estimator, qfi_mat_positive_sd
-
-
-if __name__ == "__main__":
-
-    import torch
-    import time
-    import numpy as np
-
-    from qadence.constructors import hea, feature_map
-    from qadence.operations import *
-    from qadence import QuantumCircuit
-
-    torch.manual_seed(0)
-    np.random.seed(0)
-
-    torch.set_printoptions(precision=3, sci_mode=False)
-
-    n_qubits = 2
-    batch_size = 1
-    layers = 1
-    fm = feature_map(n_qubits, range(n_qubits), param="phi", fm_type="fourier")
-    ansatz = hea(n_qubits, depth=layers, param_prefix="theta", operations=[RX, RY])
-    circuit = QuantumCircuit(n_qubits, ansatz, fm)
-
-    # Decide which values of the parameters we want to calculate the QFI in
-    vparams = [vparam for vparam in circuit.parameters() if vparam.trainable]
-    var_values = tuple(torch.rand(1, requires_grad=True) for i in range(len(vparams)))
-    var_values_nograd = [var_values[i].detach().numpy()[0] for i in range(len(var_values))]
-
-    print("qadence QFI exact")
-    fm_dict = {"phi": torch.Tensor([0])}
-    t0 = time.time()
-    qfi_mat_exact = get_quantum_fisher(circuit, vparams_values=var_values, fm_dict=fm_dict)
-    t1 = time.time()
-    total = t1 - t0
-    print(f"Total time {total}")
-    print(qfi_mat_exact)
-
-    print("qadence QFI with SPSA approximation")
-    qfi_mat_spsa = None
-    t0 = time.time()
-    for k in range(50):
-        qfi_mat_spsa, qfi_positive_sd = get_quantum_fisher_spsa(
-            circuit,
-            k,
-            vparams_values=var_values,
-            fm_dict=fm_dict,
-            previous_qfi_estimator=qfi_mat_spsa,
-        )
-    t1 = time.time()
-    total = t1 - t0
-    print(f"Total time {total}")
-
-    print(qfi_mat_spsa)

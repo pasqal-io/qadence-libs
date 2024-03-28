@@ -42,14 +42,11 @@ class QNG(Optimizer):
             metric_tensor = (1 / 4) * get_quantum_fisher(group["circuit"])
 
             with torch.no_grad():
-
                 # Finite shift the metric tensor to avoid problems when inverting
                 metric_tensor += group["beta"] * torch.eye(len(grad_vec))
 
-                # Invert matrix
-                metric_tensor_inv = torch.linalg.pinv(metric_tensor)
-
-                # Calculate the tranformed gradient vector
+                # Get transformed gradient vector
+                metric_tensor_inv = torch.linalg.inv(metric_tensor)
                 transf_grad = torch.matmul(metric_tensor_inv, grad_vec)
 
                 # Update parameters
@@ -63,7 +60,7 @@ class QNG(Optimizer):
 
 class QNG_SPSA(Optimizer):
     """Implements the Quantum Natural Gradient Algorithm using the SPSA approximation
-    to iteratively construct an approximation of the Quantum Fisher Information."""
+    to iteratively construct an approximation of the Quantum Fisher Information matrix."""
 
     def __init__(
         self,
@@ -112,6 +109,7 @@ class QNG_SPSA(Optimizer):
                     beta=group["beta"],
                 )
 
+                # Get transformed gradient vector
                 metric_tensor = (1 / 4) * qfi_mat_positive_sd
                 metric_tensor_inv = torch.linalg.pinv(metric_tensor)
                 transf_grad = torch.matmul(metric_tensor_inv, grad_vec)
