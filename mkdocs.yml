@@ -4,7 +4,9 @@ repo_name: "qadence_libs"
 
 nav:
   - Overview: index.md
-  - Sample page: sample_page.md
+  # - Sample page: sample_page.md
+  - Quantum information tools:
+    - Quantum Natural Gradient: qinfo_tools/qng.md
 
 theme:
   name: material
