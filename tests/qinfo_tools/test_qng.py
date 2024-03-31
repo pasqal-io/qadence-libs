@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pytest
 import torch
-from torch import Size, allclose
 import numpy as np
 import random
 
@@ -37,23 +36,22 @@ def create_hea_model(n_qubits, layers):
     return circuit, model
 
 
-# Create dummy quantum model for tests
-TINY_CIRCUIT, TINY_QNN = create_hea_model(2, 2)
-
+# Optimizers config [optim, config, iters]
 OPTIMIZERS_CONFIG = [
     (QNG, {"lr": 0.05, "beta": 10e-2}, 20),
     (QNG_SPSA, {"lr": 0.01, "beta": 10e-2, "epsilon": 0.01}, 20),
 ]
-MODEL_CONFIG = [(TINY_CIRCUIT, TINY_QNN)]
-DATASETS = [quadratic_dataset(100), sin_dataset(100)]
+samples = 100
+DATASETS = [quadratic_dataset(samples), sin_dataset(samples)]
 
 
 @pytest.mark.parametrize("dataset", DATASETS)
 @pytest.mark.parametrize("optim_config", OPTIMIZERS_CONFIG)
-@pytest.mark.parametrize("model_config", MODEL_CONFIG)
-def test_optims(dataset, optim_config, model_config):
+@pytest.mark.parametrize("n_qubits", [2])
+@pytest.mark.parametrize("n_layers", [1, 2])
+def test_optims(dataset, optim_config, n_qubits, n_layers):
 
-    circuit, model = model_config
+    circuit, model = create_hea_model(n_qubits, n_layers)
     model.reset_vparams(torch.rand((len(model.vparams))))
 
     optim_class, config, iters = optim_config
@@ -62,7 +60,7 @@ def test_optims(dataset, optim_config, model_config):
     vparams = [p for p in model.parameters() if p.requires_grad]
     optimizer = optim_class(params=vparams, circuit=circuit, **config)
     initial_loss = mse_loss(model(x_train).squeeze(), y_train.squeeze())
-    for i in range(iters):
+    for _ in range(iters):
         optimizer.zero_grad()
         loss = mse_loss(model(values=x_train).squeeze(), y_train.squeeze())
         loss.backward()

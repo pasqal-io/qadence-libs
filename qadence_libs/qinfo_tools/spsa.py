@@ -44,18 +44,16 @@ def _shifted_overlap(
 def spsa_gradient_step(
     model: Overlap,
     epsilon: float,
-    fm_dict: dict | None,
-):
+    fm_dict: dict,
+) -> Tensor:
     """
-    Single step to calculate the first order gradient of the given model
+    Single step to calculate the first order gradient of the given Overlap model
     via the SPSA approximation.
 
     Args:
         model (Overlap): Overlap model
         epsilon (float): Finite step size
         fm_dict (dict | None): Feature map dictionary
-        vparams_values (tuple | list | Tensor | None):
-            Values of the variational parameters
     """
 
     vparams_dict = {k: v for (k, v) in model._params.items() if v.requires_grad}
@@ -73,13 +71,13 @@ def spsa_gradient_step(
     return random_direction * (ovrlp_shifted_plus - ovrlp_shifted_minus) / (2 * epsilon)
 
 
-def spsa_2gradient(
+def spsa_2gradient_step(
     model: Overlap,
     epsilon: float,
-    fm_dict: dict = {},
-):
+    fm_dict: dict,
+) -> Tensor:
     """
-    Single step to calculate the second order gradient of the given model
+    Single step to calculate the second order gradient of the given Overlap model
     via the SPSA approximation.
 
     TODO: implement recursively using the first order function
@@ -88,8 +86,6 @@ def spsa_2gradient(
         model (Overlap): Overlap model
         epsilon (float): Finite step size
         fm_dict (dict | None): Feature map dictionary
-        vparams_values (tuple | list | Tensor | None):
-            Values of the variational parameters
     """
     vparams_dict = {k: v for (k, v) in model._params.items() if v.requires_grad}
 

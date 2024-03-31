@@ -8,7 +8,7 @@ from qadence.types import OverlapMethod, BackendName, DiffMode
 from qadence.circuit import QuantumCircuit
 from qadence.blocks import parameters, primitive_blocks
 
-from qadence_libs.qinfo_tools.spsa import spsa_2gradient as spsa_2gradient_step
+from qadence_libs.qinfo_tools.spsa import spsa_2gradient_step
 from qadence_libs.qinfo_tools.utils import hessian
 
 
@@ -48,7 +48,7 @@ def _get_fm_dict(circuit):
 
 def get_quantum_fisher(
     circuit: QuantumCircuit,
-    vparams_values: tuple | list | Tensor = None,
+    vparams_values: tuple | list | Tensor | None = None,
     fm_dict: dict[str, Tensor] = {},
     backend: BackendName = BackendName.PYQTORCH,  # type: ignore
     overlap_method: OverlapMethod = OverlapMethod.EXACT,
@@ -60,7 +60,8 @@ def get_quantum_fisher(
 
     Args:
         circuit (QuantumCircuit): The Quantum circuit we want to compute the QFI matrix of.
-        vparams (tuple): Values of the variational parameters where we want to compute the QFI.
+        vparams (tuple | list | Tensor | None):
+            Values of the variational parameters where we want to compute the QFI.
         fm_dict (dict[str, Tensor]): Values of the feature map parameters.
         overlap_method (OverlapMethod, optional): Defaults to OverlapMethod.EXACT.
         diff_mode (DiffMode, optional): Defaults to DiffMode.ad.
@@ -70,8 +71,9 @@ def get_quantum_fisher(
     if fm_dict == {}:
         fm_dict = _get_fm_dict(circuit)
 
-    # Set the variational parameters of the circuit
-    _set_circuit_vparams(circuit, vparams_values)
+    # Set the vparam_values
+    if vparams_values is not None:
+        _set_circuit_vparams(circuit, vparams_values)
 
     # Get Overlap() model
     ovrlp_model = Overlap(
@@ -115,7 +117,8 @@ def get_quantum_fisher_spsa(
     Args:
         circuit (QuantumCircuit): The Quantum circuit we want to compute the QFI matrix of.
         iteration (int): Current number of iteration.
-        vparams_values (tuple): Values of the variational parameters where we want to compute the QFI.
+        vparams_values (tuple | list | Tensor | None):
+            Values of the variational parameters where we want to compute the QFI.
         fm_dict (dict[str, Tensor]): Values of the feature map parameters.
         overla p_method (OverlapMethod, optional): Defaults to OverlapMethod.EXACT.
         diff_mode (DiffMode, optional): Defaults to DiffMode.ad.
@@ -125,8 +128,10 @@ def get_quantum_fisher_spsa(
         fm_dict = _get_fm_dict(circuit)
 
     # Set variational parameters
-    _set_circuit_vparams(circuit, vparams_values)
+    if vparams_values is not None:
+        _set_circuit_vparams(circuit, vparams_values)
 
+    # Get Overlap() model
     ovrlp_model = Overlap(
         circuit,
         circuit,
@@ -135,23 +140,20 @@ def get_quantum_fisher_spsa(
         method=overlap_method,
     )
 
-    # Set epsilon
-    gamma = 1  # 0.601
-    epsilon_k = epsilon / (iteration + 1) ** gamma
-    fid_hess = spsa_2gradient_step(ovrlp_model, epsilon_k, fm_dict)
-
-    # QFI matrix
+    # Calculate the QFI matrix
+    fid_hess = spsa_2gradient_step(ovrlp_model, epsilon, fm_dict)
     qfi_mat = -2 * fid_hess
 
-    # Calculate the new estimator from the old estimator of qfi_mat
+    # Calculate the QFI estimator from the old estimator of qfi_mat
     if iteration == 0:
         qfi_mat_estimator = qfi_mat
     else:
-        a_k = 1 / (1 + iteration) ** 1
-        qfi_mat_estimator = a_k * (iteration * previous_qfi_estimator + qfi_mat)  # type: ignore
+        a_k = 1 / (1 + iteration)
+        qfi_mat_estimator = a_k * (iteration * previous_qfi_estimator + qfi_mat)
 
     # Get the positive-semidefinite version of the matrix for the update rule in QNG
     qfi_mat_positive_sd = _symsqrt(torch.matmul(qfi_mat_estimator, qfi_mat_estimator))
     qfi_mat_positive_sd = qfi_mat_positive_sd + beta * torch.eye(len(vparams_values))
+    qfi_mat_positive_sd = qfi_mat_positive_sd / (1 + beta)  # regularization
 
     return qfi_mat_estimator, qfi_mat_positive_sd

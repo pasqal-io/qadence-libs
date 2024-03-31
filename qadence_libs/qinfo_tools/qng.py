@@ -46,7 +46,7 @@ class QNG(Optimizer):
 
             with torch.no_grad():
                 # Finite shift the metric tensor to avoid problems when inverting
-                metric_tensor += group["beta"] * torch.eye(len(grad_vec))
+                metric_tensor = metric_tensor + group["beta"] * torch.eye(len(grad_vec))
 
                 # Get transformed gradient vector
                 metric_tensor_inv = torch.linalg.inv(metric_tensor)
