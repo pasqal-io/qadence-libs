@@ -39,7 +39,10 @@ class QNG(Optimizer):
             grad_vec = torch.Tensor([v.grad.data for v in group["params"] if v.requires_grad])
 
             # Calculate the EXACT metric tensor
-            metric_tensor = (1 / 4) * get_quantum_fisher(group["circuit"])
+            metric_tensor = (1 / 4) * get_quantum_fisher(
+                group["circuit"],
+                vparams_values=group["params"],
+            )
 
             with torch.no_grad():
                 # Finite shift the metric tensor to avoid problems when inverting
@@ -102,7 +105,7 @@ class QNG_SPSA(Optimizer):
                 # Get estimation of the QFI matrix
                 qfi_estimator, qfi_mat_positive_sd = get_quantum_fisher_spsa(
                     circuit=group["circuit"],
-                    k=self.current_iteration,
+                    iteration=self.current_iteration,
                     vparams_values=group["params"],
                     previous_qfi_estimator=self.prev_qfi_estimator,
                     epsilon=group["epsilon"],

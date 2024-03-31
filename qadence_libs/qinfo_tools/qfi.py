@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import torch
 from torch import Tensor
-from torch.autograd import grad
 
 from qadence import Overlap
 from qadence.types import OverlapMethod, BackendName, DiffMode
-from qadence.blocks import parameters, primitive_blocks
 from qadence.circuit import QuantumCircuit
+from qadence.blocks import parameters, primitive_blocks
 
 from qadence_libs.qinfo_tools.spsa import spsa_2gradient as spsa_2gradient_step
+from qadence_libs.qinfo_tools.utils import hessian
 
 
 def _symsqrt(A):
@@ -34,54 +34,21 @@ def _set_circuit_vparams(circuit, vparams_values):
                     p.value = float(vparams_values[next(iter_index)])
 
 
-def _set_fm_dict(circuit, fm_dict):
-    """Sets the feature map parameter values of the circuit"""
+def _get_fm_dict(circuit):
+    """Returns a dictionary holding the FM parameters of the circuit"""
+    fm_dict = {}
     blocks = primitive_blocks(circuit.block)
     for block in blocks:
         params = parameters(block)
         for p in params:
             if not p.trainable:
                 fm_dict[p.name] = torch.tensor([p.value])
-
-
-def hessian(output: Tensor, inputs: list) -> Tensor:
-    """Calculates the Hessian of a given output vector wrt the inputs.
-
-        TODO: Use autograd built-in functions to compute the Hessian, but grad tree
-    is broken by the Overlap method
-
-        Args:
-            output (Tensor): Output vector
-            inputs (list): List of input parameters
-    """
-
-    jacobian = grad(
-        output,
-        inputs,
-        torch.ones_like(output),
-        create_graph=True,
-        allow_unused=True,
-    )
-
-    n_params = len(inputs)
-    hess = torch.empty((n_params, n_params))
-    for i in range(n_params):
-        ovrlp_grad2 = grad(
-            jacobian[i],
-            inputs,
-            torch.ones_like(jacobian[i]),
-            create_graph=True,
-            allow_unused=True,
-        )
-        for j in range(n_params):
-            hess[i, j] = ovrlp_grad2[j]
-
-    return hess
+    return fm_dict
 
 
 def get_quantum_fisher(
     circuit: QuantumCircuit,
-    vparams_values: tuple | list | Tensor | None = None,
+    vparams_values: tuple | list | Tensor = None,
     fm_dict: dict[str, Tensor] = {},
     backend: BackendName = BackendName.PYQTORCH,  # type: ignore
     overlap_method: OverlapMethod = OverlapMethod.EXACT,
@@ -99,9 +66,11 @@ def get_quantum_fisher(
         diff_mode (DiffMode, optional): Defaults to DiffMode.ad.
     """
 
-    # Set FM and variational parameters
+    # Get feature map dictionary (required to run Overlap().forward())
     if fm_dict == {}:
-        _set_fm_dict(circuit, fm_dict)
+        fm_dict = _get_fm_dict(circuit)
+
+    # Set the variational parameters of the circuit
     _set_circuit_vparams(circuit, vparams_values)
 
     # Get Overlap() model
@@ -130,12 +99,12 @@ def get_quantum_fisher(
 
 def get_quantum_fisher_spsa(
     circuit: QuantumCircuit,
-    k: int,
+    iteration: int,
     vparams_values: tuple | list | Tensor | None = None,
     fm_dict: dict[str, Tensor] = {},
     previous_qfi_estimator: Tensor = None,
-    epsilon: float = 10e-4,
-    beta: float = 10e-3,
+    epsilon: float = 10e-3,
+    beta: float = 10e-2,
     backend: BackendName = BackendName.PYQTORCH,  # type: ignore
     overlap_method: OverlapMethod = OverlapMethod.EXACT,
     diff_mode: DiffMode = DiffMode.AD,  # type: ignore
@@ -145,13 +114,18 @@ def get_quantum_fisher_spsa(
 
     Args:
         circuit (QuantumCircuit): The Quantum circuit we want to compute the QFI matrix of.
-        k (int): Current number of iteration.
+        iteration (int): Current number of iteration.
         vparams_values (tuple): Values of the variational parameters where we want to compute the QFI.
         fm_dict (dict[str, Tensor]): Values of the feature map parameters.
         overla p_method (OverlapMethod, optional): Defaults to OverlapMethod.EXACT.
         diff_mode (DiffMode, optional): Defaults to DiffMode.ad.
     """
-    _set_fm_dict(circuit, fm_dict)
+    # Get feature map dictionary (required to run Overlap().forward())
+    if fm_dict == {}:
+        fm_dict = _get_fm_dict(circuit)
+
+    # Set variational parameters
+    _set_circuit_vparams(circuit, vparams_values)
 
     ovrlp_model = Overlap(
         circuit,
@@ -162,21 +136,19 @@ def get_quantum_fisher_spsa(
     )
 
     # Set epsilon
-    gamma = 0.601
-    epsilon_k = epsilon / (k + 1) ** gamma
-
-    fid_hess = spsa_2gradient_step(ovrlp_model, epsilon_k, fm_dict, vparams_values)
+    gamma = 1  # 0.601
+    epsilon_k = epsilon / (iteration + 1) ** gamma
+    fid_hess = spsa_2gradient_step(ovrlp_model, epsilon_k, fm_dict)
 
     # QFI matrix
     qfi_mat = -2 * fid_hess
 
     # Calculate the new estimator from the old estimator of qfi_mat
-    if k == 0:
+    if iteration == 0:
         qfi_mat_estimator = qfi_mat
     else:
-
-        a_k = 1 / (1 + k) ** 1
-        qfi_mat_estimator = a_k * (k * previous_qfi_estimator + qfi_mat)  # type: ignore
+        a_k = 1 / (1 + iteration) ** 1
+        qfi_mat_estimator = a_k * (iteration * previous_qfi_estimator + qfi_mat)  # type: ignore
 
     # Get the positive-semidefinite version of the matrix for the update rule in QNG
     qfi_mat_positive_sd = _symsqrt(torch.matmul(qfi_mat_estimator, qfi_mat_estimator))

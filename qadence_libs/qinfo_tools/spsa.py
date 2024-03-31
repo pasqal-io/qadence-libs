@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 import torch
 from torch import Tensor
@@ -17,10 +19,9 @@ def _create_random_direction(size: int):
 
 def _shifted_overlap(
     model: Overlap,
-    shift: dict,
+    shift: Tensor,
     fm_dict: dict,
     vparams_dict: dict,
-    vparams_tensors: Tensor,
 ):
     """
     Calls the forward method of the model with shifted values of the ket variational parameters
@@ -30,9 +31,8 @@ def _shifted_overlap(
         shift (float): Quantity of the shift
         fm_dict (dict): Feature map dictionary
         vparams_dict (dict): Variational parameter dictionary
-        vparams_tensors (Tensor): Tensor holding the vals of vparams_dict
     """
-    shifted_vparams_dict = dict(zip(vparams_dict.keys(), vparams_tensors + shift))
+    shifted_vparams_dict = {k: (v + s) for (k, v), s in zip(vparams_dict.items(), shift)}
 
     ovrlp_shifted = model(
         bra_param_values=fm_dict | vparams_dict,
@@ -45,7 +45,6 @@ def spsa_gradient_step(
     model: Overlap,
     epsilon: float,
     fm_dict: dict | None,
-    vparams_values=tuple | list | Tensor | None,
 ):
     """
     Single step to calculate the first order gradient of the given model
@@ -59,8 +58,7 @@ def spsa_gradient_step(
             Values of the variational parameters
     """
 
-    vparams_dict_original = {k: v for (k, v) in model._params.items() if v.requires_grad}
-    vparams_tensors_new = torch.Tensor(vparams_values).reshape((model.num_vparams, 1))
+    vparams_dict = {k: v for (k, v) in model._params.items() if v.requires_grad}
 
     # Create random direction
     random_direction = _create_random_direction()
@@ -69,12 +67,8 @@ def spsa_gradient_step(
     shift = epsilon * random_direction
 
     # Overlaps with the shifted parameters
-    ovrlp_shifted_plus = _shifted_overlap(
-        model, shift, fm_dict, vparams_dict_original, vparams_tensors_new
-    )
-    ovrlp_shifted_minus = _shifted_overlap(
-        model, -shift, fm_dict, vparams_dict_original, vparams_tensors_new
-    )
+    ovrlp_shifted_plus = _shifted_overlap(model, shift, fm_dict, vparams_dict)
+    ovrlp_shifted_minus = _shifted_overlap(model, -shift, fm_dict, vparams_dict)
 
     return random_direction * (ovrlp_shifted_plus - ovrlp_shifted_minus) / (2 * epsilon)
 
@@ -82,8 +76,7 @@ def spsa_gradient_step(
 def spsa_2gradient(
     model: Overlap,
     epsilon: float,
-    fm_dict: dict | None,
-    vparams_values=tuple | list | Tensor | None,
+    fm_dict: dict = {},
 ):
     """
     Single step to calculate the second order gradient of the given model
@@ -98,33 +91,21 @@ def spsa_2gradient(
         vparams_values (tuple | list | Tensor | None):
             Values of the variational parameters
     """
-
-    vparams_dict_original = {k: v for (k, v) in model._params.items() if v.requires_grad}
-    vparams_tensors_new = torch.Tensor(vparams_values).reshape((model.num_vparams, 1))
+    vparams_dict = {k: v for (k, v) in model._params.items() if v.requires_grad}
 
     # Create random directions
     rand_dir1 = _create_random_direction(size=model.num_vparams)
     rand_dir2 = _create_random_direction(size=model.num_vparams)
 
-    print(_shifted_overlap(model, 0, fm_dict, vparams_dict_original, vparams_tensors_new))
-
     # Overlaps with the shifted parameters
     shift_p1 = epsilon * rand_dir1
-    ovrlp_shifted_p1 = _shifted_overlap(
-        model, shift_p1, fm_dict, vparams_dict_original, vparams_tensors_new
-    )
+    ovrlp_shifted_p1 = _shifted_overlap(model, shift_p1, fm_dict, vparams_dict)
     shift_p1p2 = epsilon * (rand_dir1 + rand_dir2)
-    ovrlp_shifted_p1p2 = _shifted_overlap(
-        model, shift_p1p2, fm_dict, vparams_dict_original, vparams_tensors_new
-    )
+    ovrlp_shifted_p1p2 = _shifted_overlap(model, shift_p1p2, fm_dict, vparams_dict)
     shift_m1 = -epsilon * rand_dir1
-    ovrlp_shifted_m1 = _shifted_overlap(
-        model, shift_m1, fm_dict, vparams_dict_original, vparams_tensors_new
-    )
+    ovrlp_shifted_m1 = _shifted_overlap(model, shift_m1, fm_dict, vparams_dict)
     shift_m1p2 = epsilon * (-rand_dir1 + rand_dir2)
-    ovrlp_shifted_m1p2 = _shifted_overlap(
-        model, shift_m1p2, fm_dict, vparams_dict_original, vparams_tensors_new
-    )
+    ovrlp_shifted_m1p2 = _shifted_overlap(model, shift_m1p2, fm_dict, vparams_dict)
 
     # Prefactor
     delta_F = ovrlp_shifted_p1p2 - ovrlp_shifted_p1 - ovrlp_shifted_m1p2 + ovrlp_shifted_m1

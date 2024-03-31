@@ -41,8 +41,8 @@ def create_hea_model(n_qubits, layers):
 TINY_CIRCUIT, TINY_QNN = create_hea_model(2, 2)
 
 OPTIMIZERS_CONFIG = [
-    (QNG, {"lr": 0.05, "beta": 10e-3}, 20),
-    (QNG_SPSA, {"lr": 0.01, "beta": 10e-3, "epsilon": 0.01}, 20),
+    (QNG, {"lr": 0.05, "beta": 10e-2}, 20),
+    (QNG_SPSA, {"lr": 0.01, "beta": 10e-2, "epsilon": 0.01}, 20),
 ]
 MODEL_CONFIG = [(TINY_CIRCUIT, TINY_QNN)]
 DATASETS = [quadratic_dataset(100), sin_dataset(100)]
