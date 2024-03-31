@@ -36,6 +36,7 @@ theme:
       name: Switch to light mode
 
 markdown_extensions:
+- footnotes
 - admonition  # for notes
 - pymdownx.arithmatex: # for mathjax
     generic: true
