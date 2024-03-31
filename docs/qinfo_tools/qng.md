@@ -1,6 +1,6 @@
 # The Quantum Natural Gradient optimizer
 
-Qadence-libs provides a set of optimizers based on quantum information tools, in particular based on the [Quantum Fisher Information](https://en.wikipedia.org/wiki/Quantum_Fisher_information). The Quantum Natural Gradient is a gradient-based optimizer which uses the Quantum Fisher Information matrix to better navigate the optimizer's descent to the minimum. The parameter update rule for the QNG optimizer is written as:
+Qadence-libs provides a set of optimizers based on quantum information tools, in particular based on the [Quantum Fisher Information](https://en.wikipedia.org/wiki/Quantum_Fisher_information). The Quantum Natural Gradient[^1] is a gradient-based optimizer which uses the Quantum Fisher Information matrix to better navigate the optimizer's descent to the minimum. The parameter update rule for the QNG optimizer is written as:
 
 $$
 \theta_{t+1} = \theta_t - \eta g^{-1}(\theta_t)\nabla \mathcal{L}(\theta_t)
@@ -12,10 +12,7 @@ $$
   F_{i j}(\theta)=-\left.2 \frac{\partial}{\partial \theta_i} \frac{\partial}{\partial \theta_j}\left|\left\langle\psi\left(\theta^{\prime}\right) \mid \psi(\theta)\right\rangle\right|^2\right|_{{\theta}^{\prime}=\theta}
 $$
 
-
-
-
-However, computing the above expression is a costly operation scaling quadratically with the number of parameters in the variational quantum circuit. It is thus usual to use approximate methods when dealing with the QFI matrix. Qadence provides a SPSA-based implementation of the Quantum Natural Gradient (QNG-SPSA). The [SPSA](https://www.jhuapl.edu/spsa/) (Simultaneous Perturbation Stochastic Approximation) algorithm is a well known gradient-based algorithm based on finite differences. 
+However, computing the above expression is a costly operation scaling quadratically with the number of parameters in the variational quantum circuit. It is thus usual to use approximate methods when dealing with the QFI matrix. Qadence provides a SPSA-based implementation of the Quantum Natural Gradient[^2]. The [SPSA](https://www.jhuapl.edu/spsa/) (Simultaneous Perturbation Stochastic Approximation) algorithm is a well known gradient-based algorithm based on finite differences. QNG-SPSA constructs an iterative approximation to the QFI matrix with a constant number of circuit evaluations that does not scale with the number of parameters. Although the SPSA algorithm outputs a rough approximation of the QFI matrix, the QNG-SPSA has been proven to work well while being a very efficient method due to the constant overhead in circuit evaluations (only 6 extra evalutions per iteration).
 
 In this tutorial we use the QNG and QNG-SPSA optimizers with the Quantum Circuit Learning algorithm, a variational quantum algorithm which uses Quantum Neural Networks as universal function approximators. 
 
@@ -78,15 +75,28 @@ observable = qd.hamiltonian_factory(n_qubits, detuning=qd.Z)
 
 ## Optimizers
 
-We will now experiment with three different optimizers: ADAM, QNG and QNG-SPSA. For each of them we create a new instance of the same quantum model to benchmark the optimizers indepently. 
+We will experiment with three different optimizers: ADAM, QNG and QNG-SPSA. For each of them we create a new instance of the same quantum model to benchmark the optimizers indepently under the same conditions.
 
-
-### ADAM 
 ```python exec="on" source="material-block" html="1" session="main"
-# Create quantum circuit and model 
+# ADAM
 circuit_adam = qd.QuantumCircuit(n_qubits, feature_map, ansatz)
 model_adam = qd.QNN(circuit_adam, [observable])
 
+# QNG
+circuit_qng = qd.QuantumCircuit(n_qubits, feature_map, ansatz)
+model_qng = qd.QNN(circuit_qng, [observable])
+circ_params_qng = [param for param in model_qng.parameters() if param.requires_grad]
+
+# QNG-SPSA
+circuit_qng_spsa = qd.QuantumCircuit(n_qubits, feature_map, ansatz)
+model_qng_spsa = qd.QNN(circuit_qng_spsa, [observable])
+circ_params_qng_spsa = [param for param in model_qng_spsa.parameters() if param.requires_grad]
+```
+ 
+We can now train each of the models with the corresponding optimizer:
+
+### ADAM 
+```python exec="on" source="material-block" html="1" session="main"
 # Train with ADAM
 n_epochs_adam = 20
 lr_adam = 0.1
@@ -103,11 +113,6 @@ for i in range(n_epochs_adam):
 
 ### QNG
 ```python exec="on" source="material-block" html="1" session="main"
-# Create quantum circuit and model 
-circuit_qng = qd.QuantumCircuit(n_qubits, feature_map, ansatz)
-model_qng = qd.QNN(circuit_qng, [observable])
-circ_params_qng = [param for param in model_qng.parameters() if param.requires_grad]
-
 # Train with QNG
 n_epochs_qng = 20
 lr_qng = 0.1
@@ -125,11 +130,6 @@ for i in range(n_epochs_qng):
 ### QNG-SPSA
 
 ```python exec="on" source="material-block" html="1" session="main"
-# Create quantum circuit and model 
-circuit_qng_spsa = qd.QuantumCircuit(n_qubits, feature_map, ansatz)
-model_qng_spsa = qd.QNN(circuit_qng_spsa, [observable])
-circ_params_qng_spsa = [param for param in model_qng_spsa.parameters() if param.requires_grad]
-
 # Train with QNG-SPSA
 n_epochs_qng_spsa = 20
 lr_qng_spsa = 0.01
@@ -138,7 +138,7 @@ optimizer = QNG_SPSA(
     circ_params_qng_spsa,
     lr=lr_qng_spsa,
     circuit=circuit_qng_spsa,
-    epsilon=0.001,
+    epsilon=0.01,
     beta=0.1,
 )
 
@@ -164,6 +164,11 @@ plt.plot(range(n_epochs_qng_spsa), loss_qng_spsa, label="QNG-SPSA optimizer")
 plt.legend()
 plt.xlabel("Training epochs")
 plt.ylabel("Loss")
-# plt.show()
-# print figure?
+
+from docs import docsutils # markdown-exec: hide
+print(docsutils.fig_to_html(plt.gcf())) # markdown-exec: hide
 ```
+
+## References
+[^1]: [Stokes et al.](https://quantum-journal.org/papers/q-2020-05-25-269/) - Quantum Natural Gradient
+[^2]: [Gacon et al.](https://arxiv.org/abs/2103.09232) - Simultaneous Perturbation Stochastic Approximation of the Quantum Fisher Information
