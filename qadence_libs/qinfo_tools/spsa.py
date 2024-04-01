@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+from qadence import Overlap
 from torch import Tensor
 
-from qadence import Overlap
 
-
-def _create_random_direction(size: int):
+def _create_random_direction(size: int) -> Tensor:
     """
-    Creates a torch Tensor with elements randomly drawn from {-1,+1}
+    Creates a torch Tensor with elements randomly drawn from {-1,+1}.
 
     Args:
         size (int): Size of the vector
@@ -22,9 +21,9 @@ def _shifted_overlap(
     shift: Tensor,
     fm_dict: dict,
     vparams_dict: dict,
-):
+) -> Tensor:
     """
-    Calls the forward method of the model with shifted values of the ket variational parameters
+    Calls the forward method of the model with shifted values of the ket variational parameters.
 
     Args:
         model (Overlap): Overlap model
@@ -47,7 +46,8 @@ def spsa_gradient_step(
     fm_dict: dict,
 ) -> Tensor:
     """
-    Single step to calculate the first order gradient of the given Overlap model
+    Single step to calculate the first order gradient of the given Overlap model.
+
     via the SPSA approximation.
 
     Args:
@@ -59,7 +59,7 @@ def spsa_gradient_step(
     vparams_dict = {k: v for (k, v) in model._params.items() if v.requires_grad}
 
     # Create random direction
-    random_direction = _create_random_direction()
+    random_direction = _create_random_direction(size=model.num_vparams)
 
     # Shift ket variational parameters
     shift = epsilon * random_direction
@@ -77,7 +77,8 @@ def spsa_2gradient_step(
     fm_dict: dict,
 ) -> Tensor:
     """
-    Single step to calculate the second order gradient of the given Overlap model
+    Single step to calculate the second order gradient of the given Overlap model.
+
     via the SPSA approximation.
 
     TODO: implement recursively using the first order function

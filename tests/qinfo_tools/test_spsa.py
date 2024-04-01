@@ -1,17 +1,16 @@
 from __future__ import annotations
 
-import pytest
 import random
+
 import numpy as np
+import pytest
 import torch
+from qadence import BasisSet, Overlap, QuantumCircuit
+from qadence.constructors import feature_map, hea
+from qadence.operations import RX, RY
 from torch import Size
 
-from qadence import Overlap, QuantumCircuit, BasisSet
-from qadence.constructors import hea, feature_map
-from qadence.operations import RX, RY
-
 from qadence_libs.qinfo_tools.spsa import _shifted_overlap, spsa_2gradient_step
-
 
 SEED = 42
 torch.manual_seed(SEED)
@@ -19,7 +18,7 @@ np.random.seed(SEED)
 random.seed(SEED)
 
 
-def create_hea_circuit(n_qubits, layers):
+def create_hea_circuit(n_qubits: int, layers: int) -> QuantumCircuit:
     fm = feature_map(n_qubits, range(n_qubits), param="phi", fm_type=BasisSet.CHEBYSHEV)
     ansatz = hea(n_qubits, depth=layers, param_prefix="theta", operations=[RX, RY], periodic=True)
     circuit = QuantumCircuit(n_qubits, fm, ansatz)
@@ -28,7 +27,7 @@ def create_hea_circuit(n_qubits, layers):
 
 @pytest.mark.parametrize("shift", [0.0, 0.1])
 @pytest.mark.parametrize("phi", [0.0, 0.1])
-def test_shifted_overlap(shift, phi):
+def test_shifted_overlap(shift: float, phi: float) -> None:
     circuit = create_hea_circuit(2, 2)
     fm_dict = {"phi": torch.Tensor([phi])}
 
@@ -49,8 +48,7 @@ def test_shifted_overlap(shift, phi):
 
 
 @pytest.mark.parametrize("epsilon", [0.01, 0.001])
-@pytest.mark.parametrize("beta", [0.0, 0.1])
-def test_spsa_2gradient(epsilon, beta):
+def test_spsa_2gradient(epsilon: float) -> None:
     circuit = create_hea_circuit(2, 2)
     fm_dict = {"phi": torch.Tensor([0.0])}
     ovrlp_model = Overlap(circuit, circuit)

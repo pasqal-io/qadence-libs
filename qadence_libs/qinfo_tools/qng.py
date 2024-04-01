@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import Callable
 
 import torch
-from torch.optim.optimizer import Optimizer, required
 from qadence import QuantumCircuit
+from torch.optim.optimizer import Optimizer, required
+
 from qadence_libs.qinfo_tools.qfi import get_quantum_fisher, get_quantum_fisher_spsa
 
 
@@ -62,8 +63,10 @@ class QNG(Optimizer):
 
 
 class QNG_SPSA(Optimizer):
-    """Implements the Quantum Natural Gradient Algorithm using the SPSA approximation
-    to iteratively construct an approximation of the Quantum Fisher Information matrix."""
+    """Implements the Quantum Natural Gradient Algorithm using the SPSA approximation.
+
+    to iteratively construct an approximation of the Quantum Fisher Information matrix.
+    """
 
     def __init__(
         self,

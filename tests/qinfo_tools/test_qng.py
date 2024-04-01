@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-import pytest
-import torch
-import numpy as np
 import random
 
-from qadence import QNN, QuantumCircuit, BasisSet, hamiltonian_factory
-from qadence.constructors import hea, feature_map
-from qadence.operations import Z, RX, RY
+import numpy as np
+import pytest
+import torch
+from qadence import QNN, BasisSet, QuantumCircuit, hamiltonian_factory
+from qadence.constructors import feature_map, hea
+from qadence.operations import RX, RY, Z
+from torch import Tensor
 
 from qadence_libs.qinfo_tools import QNG, QNG_SPSA
 
@@ -17,17 +18,17 @@ np.random.seed(SEED)
 random.seed(SEED)
 
 
-def quadratic_dataset(samples):
+def quadratic_dataset(samples: int) -> tuple[Tensor, Tensor]:
     x_train = torch.rand(samples)
     return x_train, x_train**2
 
 
-def sin_dataset(samples):
+def sin_dataset(samples: int) -> tuple[Tensor, Tensor]:
     x_train = torch.rand(samples)
     return x_train, torch.sin(x_train)
 
 
-def create_hea_model(n_qubits, layers):
+def create_hea_model(n_qubits: int, layers: int) -> tuple[QuantumCircuit, QNN]:
     fm = feature_map(n_qubits, range(n_qubits), param="phi", fm_type=BasisSet.CHEBYSHEV)
     ansatz = hea(n_qubits, depth=layers, param_prefix="theta", operations=[RX, RY], periodic=True)
     circuit = QuantumCircuit(n_qubits, fm, ansatz)
@@ -49,8 +50,12 @@ DATASETS = [quadratic_dataset(samples), sin_dataset(samples)]
 @pytest.mark.parametrize("optim_config", OPTIMIZERS_CONFIG)
 @pytest.mark.parametrize("n_qubits", [2])
 @pytest.mark.parametrize("n_layers", [1, 2])
-def test_optims(dataset, optim_config, n_qubits, n_layers):
-
+def test_optims(
+    dataset: tuple[Tensor, Tensor],
+    optim_config: dict,
+    n_qubits: int,
+    n_layers: int,
+) -> None:
     circuit, model = create_hea_model(n_qubits, n_layers)
     model.reset_vparams(torch.rand((len(model.vparams))))
 

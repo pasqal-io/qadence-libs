@@ -1,20 +1,25 @@
 from __future__ import annotations
 
-import torch
-from torch import Tensor
+from typing import Iterable
 
+import torch
 from qadence import Overlap
-from qadence.types import OverlapMethod, BackendName, DiffMode
-from qadence.circuit import QuantumCircuit
 from qadence.blocks import parameters, primitive_blocks
+from qadence.circuit import QuantumCircuit
+from qadence.types import BackendName, DiffMode, OverlapMethod
+from torch import Tensor
 
 from qadence_libs.qinfo_tools.spsa import spsa_2gradient_step
 from qadence_libs.qinfo_tools.utils import hessian
 
 
-def _symsqrt(A):
-    """Computes the square root of a Symmetric or Hermitian positive definite matrix or batch of matrices.
-    Code from https://github.com/pytorch/pytorch/issues/25481#issuecomment-1032789228"""
+def _symsqrt(A: Tensor) -> Tensor:
+    """Computes the square root of a Symmetric or Hermitian positive definite matrix.
+
+    or batch of matrices.
+
+    Code from https://github.com/pytorch/pytorch/issues/25481#issuecomment-1032789228
+    """
     L, Q = torch.linalg.eigh(A)
     zero = torch.zeros((), device=L.device, dtype=L.dtype)
     threshold = L.max(-1).values * L.size(-1) * torch.finfo(L.dtype).eps
@@ -22,8 +27,8 @@ def _symsqrt(A):
     return (Q * L.sqrt().unsqueeze(-2)) @ Q.mH
 
 
-def _set_circuit_vparams(circuit, vparams_values):
-    """Sets the variational parameter values of the circuit"""
+def _set_circuit_vparams(circuit: QuantumCircuit, vparams_values: Iterable) -> None:
+    """Sets the variational parameter values of the circuit."""
     if vparams_values is not None:
         blocks = primitive_blocks(circuit.block)
         iter_index = iter(range(len(blocks)))
@@ -31,11 +36,11 @@ def _set_circuit_vparams(circuit, vparams_values):
             params = parameters(block)
             for p in params:
                 if p.trainable:
-                    p.value = float(vparams_values[next(iter_index)])
+                    p.value = float(vparams_values[next(iter_index)])  # type: ignore
 
 
-def _get_fm_dict(circuit):
-    """Returns a dictionary holding the FM parameters of the circuit"""
+def _get_fm_dict(circuit: QuantumCircuit) -> dict:
+    """Returns a dictionary holding the FM parameters of the circuit."""
     fm_dict = {}
     blocks = primitive_blocks(circuit.block)
     for block in blocks:
@@ -48,13 +53,14 @@ def _get_fm_dict(circuit):
 
 def get_quantum_fisher(
     circuit: QuantumCircuit,
-    vparams_values: tuple | list | Tensor | None = None,
+    vparams_values: Iterable[float | Tensor] | None = None,
     fm_dict: dict[str, Tensor] = {},
     backend: BackendName = BackendName.PYQTORCH,  # type: ignore
     overlap_method: OverlapMethod = OverlapMethod.EXACT,
     diff_mode: DiffMode = DiffMode.AD,  # type: ignore
 ) -> Tensor:
-    """Returns the exact Quantum Fisher Information (QFI) matrix of the quantum circuit
+    """Returns the exact Quantum Fisher Information (QFI) matrix of the quantum circuit.
+
     with given values for the variational parameters (vparams_values) and the
     feature map (fm_dict).
 
@@ -102,7 +108,7 @@ def get_quantum_fisher(
 def get_quantum_fisher_spsa(
     circuit: QuantumCircuit,
     iteration: int,
-    vparams_values: tuple | list | Tensor | None = None,
+    vparams_values: Iterable[float | Tensor] | None = None,
     fm_dict: dict[str, Tensor] = {},
     previous_qfi_estimator: Tensor = None,
     epsilon: float = 10e-3,
@@ -111,7 +117,8 @@ def get_quantum_fisher_spsa(
     overlap_method: OverlapMethod = OverlapMethod.EXACT,
     diff_mode: DiffMode = DiffMode.AD,  # type: ignore
 ) -> Tensor:
-    """Function to calculate the Quantum Fisher Information (QFI) matrix with the
+    """Function to calculate the Quantum Fisher Information (QFI) matrix with the.
+
     SPSA approximation.
 
     Args:
@@ -149,11 +156,11 @@ def get_quantum_fisher_spsa(
         qfi_mat_estimator = qfi_mat
     else:
         a_k = 1 / (1 + iteration)
-        qfi_mat_estimator = a_k * (iteration * previous_qfi_estimator + qfi_mat)
+        qfi_mat_estimator = a_k * (iteration * previous_qfi_estimator + qfi_mat)  # type: ignore
 
     # Get the positive-semidefinite version of the matrix for the update rule in QNG
     qfi_mat_positive_sd = _symsqrt(torch.matmul(qfi_mat_estimator, qfi_mat_estimator))
-    qfi_mat_positive_sd = qfi_mat_positive_sd + beta * torch.eye(len(vparams_values))
+    qfi_mat_positive_sd = qfi_mat_positive_sd + beta * torch.eye(ovrlp_model.num_vparams)
     qfi_mat_positive_sd = qfi_mat_positive_sd / (1 + beta)  # regularization
 
     return qfi_mat_estimator, qfi_mat_positive_sd

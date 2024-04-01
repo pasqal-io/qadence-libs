@@ -14,7 +14,7 @@ $$
 
 However, computing the above expression is a costly operation scaling quadratically with the number of parameters in the variational quantum circuit. It is thus usual to use approximate methods when dealing with the QFI matrix. Qadence provides a SPSA-based implementation of the Quantum Natural Gradient[^2]. The [SPSA](https://www.jhuapl.edu/spsa/) (Simultaneous Perturbation Stochastic Approximation) algorithm is a well known gradient-based algorithm based on finite differences. QNG-SPSA constructs an iterative approximation to the QFI matrix with a constant number of circuit evaluations that does not scale with the number of parameters. Although the SPSA algorithm outputs a rough approximation of the QFI matrix, the QNG-SPSA has been proven to work well while being a very efficient method due to the constant overhead in circuit evaluations (only 6 extra evalutions per iteration).
 
-In this tutorial we use the QNG and QNG-SPSA optimizers with the Quantum Circuit Learning algorithm, a variational quantum algorithm which uses Quantum Neural Networks as universal function approximators. 
+In this tutorial we use the QNG and QNG-SPSA optimizers with the Quantum Circuit Learning algorithm, a variational quantum algorithm which uses Quantum Neural Networks as universal function approximators.
 
 ```python exec="on" source="material-block" html="1" session="main"
 import torch
@@ -92,10 +92,10 @@ circuit_qng_spsa = qd.QuantumCircuit(n_qubits, feature_map, ansatz)
 model_qng_spsa = qd.QNN(circuit_qng_spsa, [observable])
 circ_params_qng_spsa = [param for param in model_qng_spsa.parameters() if param.requires_grad]
 ```
- 
+
 We can now train each of the models with the corresponding optimizer:
 
-### ADAM 
+### ADAM
 ```python exec="on" source="material-block" html="1" session="main"
 # Train with ADAM
 n_epochs_adam = 20

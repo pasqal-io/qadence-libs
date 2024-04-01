@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-import numpy as np
 import random
+
+import numpy as np
 import torch
+from qadence import BasisSet, QuantumCircuit
+from qadence.constructors import feature_map, hea
+from qadence.operations import RX
 from torch import Size, allclose
 
-from qadence import QuantumCircuit, BasisSet
-from qadence.constructors import hea, feature_map
-from qadence.operations import RX
-
 from qadence_libs.qinfo_tools import get_quantum_fisher, get_quantum_fisher_spsa
-
 
 SEED = 42
 torch.manual_seed(SEED)
@@ -18,7 +17,7 @@ np.random.seed(SEED)
 random.seed(SEED)
 
 
-def create_hea_circuit(n_qubits, layers):
+def create_hea_circuit(n_qubits: int, layers: int) -> QuantumCircuit:
     fm = feature_map(n_qubits, range(n_qubits), param="phi", fm_type=BasisSet.CHEBYSHEV)
     ansatz = hea(n_qubits, depth=layers, param_prefix="theta", operations=[RX], periodic=True)
     circuit = QuantumCircuit(n_qubits, ansatz, fm)
@@ -36,7 +35,7 @@ textbook_qfi = torch.Tensor(
 )
 
 
-def test_qfi_exact():
+def test_qfi_exact() -> None:
     circuit = create_hea_circuit(2, 2)
     vparams_vals = [torch.Tensor([1.0]) for vparam in circuit.parameters() if vparam.trainable]
     fm_dict = {"phi": torch.Tensor([0])}
@@ -47,7 +46,7 @@ def test_qfi_exact():
     assert allclose(textbook_qfi, qfi_mat_exact)
 
 
-def test_qfi_spsa():
+def test_qfi_spsa() -> None:
     circuit = create_hea_circuit(2, 2)
     vparams_vals = [torch.Tensor([1.0]) for vparam in circuit.parameters() if vparam.trainable]
     fm_dict = {"phi": torch.Tensor([0])}
@@ -70,7 +69,7 @@ def test_qfi_spsa():
     assert 2 * final_nrm < initial_nrm
 
     n_vparams = len(vparams_vals)
-    assert qfi_mat_spsa.shape == Size([n_vparams, n_vparams])
+    assert qfi_mat_spsa.shape == Size([n_vparams, n_vparams])  # type: ignore
     assert qfi_positive_sd.shape == Size([n_vparams, n_vparams])
 
     # Check that qfi_positive_sd is positive semi-definite
