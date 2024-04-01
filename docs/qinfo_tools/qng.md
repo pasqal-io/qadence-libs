@@ -58,7 +58,7 @@ x_test, y_test = x[test_ind], y[test_ind]
 
 We now create the base Quantum Circuit that we will use with all the optimizers:
 ```python exec="on" source="material-block" html="1" session="main"
-n_qubits = 4
+n_qubits = 3
 
 # create a simple feature map to encode the input data
 feature_param = qd.FeatureParameter("phi")
