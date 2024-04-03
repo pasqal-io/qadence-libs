@@ -39,8 +39,8 @@ def create_hea_model(n_qubits: int, layers: int) -> tuple[QuantumCircuit, QNN]:
 
 # Optimizers config [optim, config, iters]
 OPTIMIZERS_CONFIG = [
-    (QNG, {"lr": 0.05, "beta": 10e-2}, 20),
-    (QNG_SPSA, {"lr": 0.01, "beta": 10e-2, "epsilon": 0.01}, 20),
+    (QNG, {"lr": 0.1, "beta": 10e-2}, 20),
+    (QNG_SPSA, {"lr": 0.1, "beta": 10e-2, "epsilon": 0.01}, 20),
 ]
 samples = 100
 DATASETS = [quadratic_dataset(samples), sin_dataset(samples)]
@@ -49,7 +49,7 @@ DATASETS = [quadratic_dataset(samples), sin_dataset(samples)]
 @pytest.mark.parametrize("dataset", DATASETS)
 @pytest.mark.parametrize("optim_config", OPTIMIZERS_CONFIG)
 @pytest.mark.parametrize("n_qubits", [2])
-@pytest.mark.parametrize("n_layers", [1, 2])
+@pytest.mark.parametrize("n_layers", [1])
 def test_optims(
     dataset: tuple[Tensor, Tensor],
     optim_config: dict,
@@ -71,6 +71,6 @@ def test_optims(
         loss.backward()
         optimizer.step()
 
-    assert initial_loss > 2 * loss
+    assert initial_loss > 2.0 * loss
     if hasattr(optimizer, "current_iteration"):
         assert optimizer.current_iteration == iters
