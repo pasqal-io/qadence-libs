@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
-
+from eic_aero.ufa_models.config import AnsatzConfig, FeatureMapConfig, ObservableConfig
 from qadence.blocks import chain, kron
 from qadence.blocks.abstract import AbstractBlock
 from qadence.blocks.composite import ChainBlock
@@ -20,8 +20,6 @@ from qadence.models import QNN
 from qadence.operations import CNOT, RX, RY, H
 from qadence.register import Register
 from qadence.types import Interaction, ReuploadScaling, Strategy
-
-from eic_aero.ufa_models.config import AnsatzConfig, FeatureMapConfig, ObservableConfig
 
 
 def _create_support_arrays(
@@ -51,10 +49,7 @@ def _create_support_arrays(
         return [tuple(range(num_qubits)) for i in range(num_features)]
     elif multivariate_strategy == "parallel":
         if num_features <= num_qubits:
-            return [
-                tuple(x.tolist())
-                for x in np.array_split(np.arange(num_qubits), num_features)
-            ]
+            return [tuple(x.tolist()) for x in np.array_split(np.arange(num_qubits), num_features)]
         else:
             raise ValueError(
                 f"Number of features {num_features} must be less than or equal to the number of \
@@ -275,9 +270,7 @@ def _encode_feature_rydberg(
         return rydberg_tower_feature_map(n_qubits=num_qubits, param=param)
 
     else:
-        raise NotImplementedError(
-            f"Rydberg feature map not implemented for {reupload_scaling}"
-        )
+        raise NotImplementedError(f"Rydberg feature map not implemented for {reupload_scaling}")
 
 
 def _create_rydberg_fm(
@@ -528,11 +521,7 @@ def _create_hea_rydberg(
     Returns:
         AbstractBlock: The Rydberg Hardware Efficient Ansatz.
     """
-    register = (
-        register
-        if isinstance(register, Register)
-        else Register.circle(n_qubits=register)
-    )
+    register = register if isinstance(register, Register) else Register.circle(n_qubits=register)
 
     addressable_detuning = config.strategy_args.get("addressable_detuning", True)
     addressable_drive = config.strategy_args.get("addressable_drive", False)

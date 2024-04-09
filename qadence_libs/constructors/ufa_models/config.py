@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from sympy import Basic
 from typing import Callable, Type
 
+from qadence.blocks.analog import AnalogBlock
 from qadence.blocks.primitive import ParametricBlock
 from qadence.logger import get_logger
-from qadence.blocks.analog import AnalogBlock
-from qadence.operations import AnalogRX, RX, Z
+from qadence.operations import RX, AnalogRX, Z
 from qadence.parameters import Parameter
 from qadence.types import BasisSet, ReuploadScaling, TArray
+from sympy import Basic
 
 logger = get_logger(__file__)
 
@@ -21,7 +21,9 @@ class FeatureMapConfig:
 
     basis_set: BasisSet | list[BasisSet]
     """
-    Basis set for feature encoding. Takes qadence.BasisSet.
+    Basis set for feature encoding.
+
+    Takes qadence.BasisSet.
     Give a single BasisSet to use the same for all features.
     Give a list of BasisSet to apply each item for a corresponding variable.
     BasisSet.FOURIER for Fourier encoding.
@@ -30,8 +32,10 @@ class FeatureMapConfig:
 
     reupload_scaling: ReuploadScaling | list[ReuploadScaling]
     """
-    Scaling for encoding the same feature on different qubits in the
-    same layer of the feature maps. Takes qadence.ReuploadScaling.
+    Scaling for data reupload in the feature map.
+
+    This for encoding the same feature on different qubits in the same layer of
+    the feature maps. Takes qadence.ReuploadScaling.
     Give a single ReuploadScaling to use the same for all features.
     Give a list of ReuploadScaling to apply each item for a corresponding variable.
     ReuploadScaling.CONSTANT for constant scaling.
@@ -42,20 +46,24 @@ class FeatureMapConfig:
     feature_range: tuple[float, float] | list[tuple[float, float]]
     """
     Range of data that the input data is assumed to come from.
+
     Give a single tuple to use the same range for all features.
     Give a list of tuples to use each item for a corresponding variable.
     """
 
-    target_range: tuple[float, float] | list[tuple[float, float]] | None = None
+    target_range: tuple[float, float] | list[tuple[float, float] | None] | None = None
     """
     Range of data the data encoder assumes as natural range.
+
     Give a single tuple to use the same range for all features.
     Give a list of tuples to use each item for a corresponding variable.
     """
 
     multivariate_strategy: str = "parallel"
     """
-    The  encoding strategy in case of multi-variate function. If "parallel",
+    The  encoding strategy in case of multi-variate function.
+
+    If "parallel",
     the features are encoded in one block of rotation gates. with each
     feature given an equal number of qubits. If "serial", the features are
     encoded sequentially, with a HEA block between. "parallel" is allowed
@@ -63,29 +71,41 @@ class FeatureMapConfig:
     """
 
     feature_map_strategy: str = "digital"
-    """Strategy for feature map. Accepts 'digital', 'analog' or 'rydberg'. Defaults to "digital"."""
+    """Strategy for feature map.
+
+    Accepts 'digital', 'analog' or 'rydberg'. Defaults to "digital".
+    """
 
     param_prefix: str = "phi"
-    """The base name of the feature map parameter. Defaults to `phi`."""
+    """The base name of the feature map parameter.
+
+    Defaults to `phi`.
+    """
 
     num_repeats: int | list[int] = 0
     """
-    Number of feature map layers repeated in the data reuploadig step. If all are to be \
-    repeated the same number of times, then can give a single `int`. For different number \
-    of repeatitions for each feature, provide a list of `int`s corresponding to desired \
-    number of repeatitions. This amounts to the number of additional reuploads. So if \
-    `num_repeats` is N, the data gets uploaded N+1 times. Defaults to no repeatition.
+    Number of feature map layers repeated in the data reuploadig step.
+
+    If all features are to be repeated the same number of times, then can give
+    a single `int`. For different number  of repeatitions for each feature,
+    provide a list of `int`s corresponding to desired number of repeatitions.
+    This amounts to the number of additional reuploads. So if `num_repeats` is
+    N, the data gets uploaded N+1 times. Defaults to no repeatition.
     """
 
     operation: Callable[[Parameter | Basic], AnalogBlock] | Type[RX] | None = None
     """
-    type of operation. Choose among the analog or digital rotations or a custom
+    Type of operation.
+
+    Choose among the analog or digital rotations or a custom
     callable function returning an AnalogBlock instance
     """
 
     inputs: list[Basic | str] | None = None
     """
-    List that indicates the order of variables of the tensors that are passed
+    Order of variables in the input tensor.
+
+    List that indicates the order of variables of the tensors that are passed.
     to the model. Given input tensors `xs = torch.rand(batch_size, input_size:=2)` a QNN
     with `inputs=("t", "x")` will assign `t, x = xs[:,0], xs[:,1]`.
     """
@@ -134,9 +154,7 @@ class FeatureMapConfig:
                 use same basis for all features."
 
         if isinstance(self.reupload_scaling, ReuploadScaling):
-            self.reupload_scaling = [
-                self.reupload_scaling for i in range(self.num_features)
-            ]
+            self.reupload_scaling = [self.reupload_scaling for i in range(self.num_features)]
         else:
             assert (
                 len(self.reupload_scaling) == self.num_features
@@ -183,15 +201,15 @@ class AnsatzConfig:
     """Number of layers of the ansatz."""
 
     ansatz_type: str
-    """
-    What type of ansatz.
+    """What type of ansatz.
+
     "hea" for Hardware Efficient Ansatz.
     "iia" for Identity intialized Ansatz.
     """
 
     ansatz_strategy: str
-    """
-    Ansatz strategy.
+    """Ansatz strategy.
+
     "digital" for fully digital ansatz. Required if `ansatz_type` is `iia`.
     "sdaqc" for analog entangling block.
     "rydberg" for fully rydberg hea ansatz.
@@ -200,6 +218,7 @@ class AnsatzConfig:
     strategy_args: dict = field(default_factory=dict)
     """
     A dictionary containing keyword arguments to the function creating the ansatz.
+
     Details about each below.
 
     For "digital" strategy, accepts the following:
@@ -250,13 +269,15 @@ class ObservableConfig:
     detuning: Type[Z] = Z
     """
     Single qubit detuning of the observable Hamiltonian.
+
     Accepts single-qubit operator N, X, Y, or Z.
     Defaults to Z.
     """
 
     detuning_strength: TArray | str | None = None
     """
-    list of values to be used as the detuning strength for each qubit.
+    List of values to be used as the detuning strength for each qubit.
+
     Alternatively, some string "x" can be passed, which will create a parameterized
     detuning for each qubit, each labelled as `"x_i"`.
     Defaults to 1.0 for each qubit.
