@@ -74,7 +74,7 @@ def get_quantum_fisher(
     """
 
     # Get feature map dictionary (required to run Overlap().forward())
-    if fm_dict == {}:
+    if not fm_dict:
         fm_dict = _get_fm_dict(circuit)
 
     # Set the vparam_values
