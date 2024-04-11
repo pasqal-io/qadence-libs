@@ -80,18 +80,16 @@ observable = hamiltonian_factory(n_qubits, detuning= Z)
 We will experiment with three different optimizers: ADAM, QNG and QNG-SPSA. For each of them we create a new instance of the same quantum model to benchmark the optimizers indepently under the same conditions.
 
 ```python exec="on" source="material-block" html="1" session="main"
-# ADAM
-circuit_adam = QuantumCircuit(n_qubits, feature_map, ansatz)
-model_adam = QNN(circuit_adam, [observable])
+# Build circuit
+circuit = QuantumCircuit(n_qubits, feature_map, ansatz)
 
-# QNG
-circuit_qng = QuantumCircuit(n_qubits, feature_map, ansatz)
-model_qng = QNN(circuit_qng, [observable])
+# Build models
+model_adam = QNN(circuit, [observable])
+model_qng = QNN(circuit, [observable])
+model_qng_spsa = QNN(circuit, [observable])
+
+# Retrieve the circuit parameters for the QNG-based optimizers
 circ_params_qng = [param for param in model_qng.parameters() if param.requires_grad]
-
-# QNG-SPSA
-circuit_qng_spsa = QuantumCircuit(n_qubits, feature_map, ansatz)
-model_qng_spsa = QNN(circuit_qng_spsa, [observable])
 circ_params_qng_spsa = [param for param in model_qng_spsa.parameters() if param.requires_grad]
 ```
 
@@ -118,8 +116,7 @@ for i in range(n_epochs_adam):
 # Train with QNG
 n_epochs_qng = 20
 lr_qng = 0.1
-mse_loss = torch.nn.MSELoss()  # standard PyTorch loss function
-optimizer = QNG(circ_params_qng, lr=lr_qng, circuit=circuit_qng, beta=0.1)
+optimizer = QNG(circ_params_qng, lr=lr_qng, circuit=circuit, beta=0.1)
 loss_qng = []
 for i in range(n_epochs_qng):
     optimizer.zero_grad()
@@ -135,11 +132,10 @@ for i in range(n_epochs_qng):
 # Train with QNG-SPSA
 n_epochs_qng_spsa = 20
 lr_qng_spsa = 0.01
-mse_loss = torch.nn.MSELoss()  # standard PyTorch loss function
 optimizer = QNG_SPSA(
     circ_params_qng_spsa,
     lr=lr_qng_spsa,
-    circuit=circuit_qng_spsa,
+    circuit=circuit,
     epsilon=0.01,
     beta=0.1,
 )
