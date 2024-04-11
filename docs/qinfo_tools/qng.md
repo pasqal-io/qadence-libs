@@ -1,6 +1,6 @@
 # The Quantum Natural Gradient optimizer
 
-Qadence-libs provides a set of optimizers based on quantum information tools, in particular based on the [Quantum Fisher Information](https://en.wikipedia.org/wiki/Quantum_Fisher_information). The Quantum Natural Gradient[^1] is a gradient-based optimizer which uses the Quantum Fisher Information matrix to better navigate the optimizer's descent to the minimum. The parameter update rule for the QNG optimizer is written as:
+Qadence-libs provides a set of optimizers based on quantum information tools, in particular based on the [Quantum Fisher Information](https://en.wikipedia.org/wiki/Quantum_Fisher_information) (QFI). The Quantum Natural Gradient [^1] (QNG) is a gradient-based optimizer which uses the QFI matrix to better navigate the optimizer's descent to the minimum. The parameter update rule for the QNG optimizer is written as:
 
 $$
 \theta_{t+1} = \theta_t - \eta g^{-1}(\theta_t)\nabla \mathcal{L}(\theta_t)
