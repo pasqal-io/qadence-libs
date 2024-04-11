@@ -109,7 +109,7 @@ def get_quantum_fisher_spsa(
     backend: BackendName = BackendName.PYQTORCH,  # type: ignore
     overlap_method: OverlapMethod = OverlapMethod.EXACT,
     diff_mode: DiffMode = DiffMode.AD,  # type: ignore
-) -> Tensor:
+) -> tuple[Tensor, Tensor]:
     """Function to calculate the Quantum Fisher Information (QFI) matrix with the
     SPSA approximation.
 
