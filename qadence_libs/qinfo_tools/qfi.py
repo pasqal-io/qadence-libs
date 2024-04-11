@@ -99,10 +99,7 @@ def get_quantum_fisher(
     # parameters in the bra and not in the ket
     vparams = [v for v in ovrlp_model._params.values() if v.requires_grad]
 
-    # Calculate the Hessian
-    fid_hess = hessian(ovrlp, vparams)
-
-    return -2 * fid_hess
+    return -2 * hessian(ovrlp, vparams)
 
 
 def get_quantum_fisher_spsa(
