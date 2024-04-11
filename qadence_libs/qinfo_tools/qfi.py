@@ -54,7 +54,7 @@ def _get_fm_dict(circuit: QuantumCircuit) -> dict:
 def get_quantum_fisher(
     circuit: QuantumCircuit,
     vparams_values: Iterable[float | Tensor] | None = None,
-    fm_dict: dict[str, Tensor] = {},
+    fm_dict: dict[str, Tensor] = dict(),
     backend: BackendName = BackendName.PYQTORCH,  # type: ignore
     overlap_method: OverlapMethod = OverlapMethod.EXACT,
     diff_mode: DiffMode = DiffMode.AD,  # type: ignore
