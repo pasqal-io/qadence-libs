@@ -145,8 +145,7 @@ def get_quantum_fisher_spsa(
     )
 
     # Calculate the QFI matrix
-    fid_hess = spsa_2gradient_step(ovrlp_model, epsilon, fm_dict)
-    qfi_mat = -2 * fid_hess
+    qfi_mat = -2 * spsa_2gradient_step(ovrlp_model, epsilon, fm_dict)
 
     # Calculate the QFI estimator from the old estimator of qfi_mat
     if iteration == 0:
