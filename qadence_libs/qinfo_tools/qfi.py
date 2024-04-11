@@ -15,9 +15,6 @@ from qadence_libs.qinfo_tools.utils import hessian
 
 def _symsqrt(A: Tensor) -> Tensor:
     """Computes the square root of a Symmetric or Hermitian positive definite matrix.
-
-    or batch of matrices.
-
     Code from https://github.com/pytorch/pytorch/issues/25481#issuecomment-1032789228
     """
     L, Q = torch.linalg.eigh(A)
