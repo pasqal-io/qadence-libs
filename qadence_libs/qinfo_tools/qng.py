@@ -63,8 +63,7 @@ class QNG(Optimizer):
 
 
 class QNG_SPSA(Optimizer):
-    """Implements the Quantum Natural Gradient Algorithm using the SPSA approximation.
-
+    """Implements the Quantum Natural Gradient Algorithm using the SPSA approximation
     to iteratively construct an approximation of the Quantum Fisher Information matrix.
     """
 

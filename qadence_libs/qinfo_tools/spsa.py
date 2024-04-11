@@ -46,8 +46,7 @@ def spsa_gradient_step(
     fm_dict: dict,
 ) -> Tensor:
     """
-    Single step to calculate the first order gradient of the given Overlap model.
-
+    Single step to calculate the first order gradient of the given Overlap model
     via the SPSA approximation.
 
     Args:
@@ -77,8 +76,7 @@ def spsa_2gradient_step(
     fm_dict: dict,
 ) -> Tensor:
     """
-    Single step to calculate the second order gradient of the given Overlap model.
-
+    Single step to calculate the second order gradient of the given Overlap model
     via the SPSA approximation.
 
     TODO: implement recursively using the first order function

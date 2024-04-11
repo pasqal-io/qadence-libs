@@ -56,8 +56,7 @@ def get_quantum_fisher(
     overlap_method: OverlapMethod = OverlapMethod.EXACT,
     diff_mode: DiffMode = DiffMode.AD,  # type: ignore
 ) -> Tensor:
-    """Returns the exact Quantum Fisher Information (QFI) matrix of the quantum circuit.
-
+    """Returns the exact Quantum Fisher Information (QFI) matrix of the quantum circuit
     with given values for the variational parameters (vparams_values) and the
     feature map (fm_dict).
 
@@ -111,8 +110,7 @@ def get_quantum_fisher_spsa(
     overlap_method: OverlapMethod = OverlapMethod.EXACT,
     diff_mode: DiffMode = DiffMode.AD,  # type: ignore
 ) -> Tensor:
-    """Function to calculate the Quantum Fisher Information (QFI) matrix with the.
-
+    """Function to calculate the Quantum Fisher Information (QFI) matrix with the
     SPSA approximation.
 
     Args:

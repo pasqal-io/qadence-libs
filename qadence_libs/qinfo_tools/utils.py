@@ -8,12 +8,13 @@ from torch.autograd import grad
 def hessian(output: Tensor, inputs: list) -> Tensor:
     """Calculates the Hessian of a given output vector wrt the inputs.
 
-        TODO: Use autograd built-in functions for a more efficient implementation, but grad tree
+    TODO: Use autograd built-in functions for a more efficient implementation,
+    but grad tree
     is broken by the Overlap method
 
-        Args:
-            output (Tensor): Output vector
-            inputs (list): List of input parameters
+    Args:
+        output (Tensor): Output vector
+        inputs (list): List of input parameters
     """
 
     jacobian = grad(
