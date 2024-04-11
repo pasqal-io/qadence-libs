@@ -110,7 +110,7 @@ def get_quantum_fisher_spsa(
     iteration: int,
     vparams_values: Iterable[float | Tensor] | None = None,
     fm_dict: dict[str, Tensor] = {},
-    previous_qfi_estimator: Tensor = None,
+    previous_qfi_estimator: Tensor | None = None,
     epsilon: float = 10e-3,
     beta: float = 10e-2,
     backend: BackendName = BackendName.PYQTORCH,  # type: ignore
