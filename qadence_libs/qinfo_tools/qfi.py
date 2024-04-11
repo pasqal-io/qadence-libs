@@ -106,7 +106,7 @@ def get_quantum_fisher_spsa(
     circuit: QuantumCircuit,
     iteration: int,
     vparams_values: Iterable[float | Tensor] | None = None,
-    fm_dict: dict[str, Tensor] = {},
+    fm_dict: dict[str, Tensor] = dict(),
     previous_qfi_estimator: Tensor | None = None,
     epsilon: float = 10e-3,
     beta: float = 10e-2,
@@ -128,7 +128,7 @@ def get_quantum_fisher_spsa(
         diff_mode (DiffMode, optional): Defaults to DiffMode.ad.
     """
     # Get feature map dictionary (required to run Overlap().forward())
-    if fm_dict == {}:
+    if not fm_dict:
         fm_dict = _get_fm_dict(circuit)
 
     # Set variational parameters
