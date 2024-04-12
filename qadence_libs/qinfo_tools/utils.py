@@ -5,7 +5,7 @@ from torch import Tensor
 from torch.autograd import grad
 
 
-def hessian(output: Tensor, inputs: list) -> Tensor:
+def hessian(output: Tensor, inputs: list[Tensor]) -> Tensor:
     """Calculates the Hessian of a given output vector wrt the inputs.
 
     TODO: Use autograd built-in functions for a more efficient implementation,
@@ -14,7 +14,7 @@ def hessian(output: Tensor, inputs: list) -> Tensor:
 
     Args:
         output (Tensor): Output vector
-        inputs (list): List of input parameters
+        inputs (list[Tensor]): List of input parameters
     """
 
     jacobian = grad(
