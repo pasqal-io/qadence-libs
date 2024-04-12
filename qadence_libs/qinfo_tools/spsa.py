@@ -23,7 +23,7 @@ def _shifted_overlap(
     vparams_dict: dict,
 ) -> Tensor:
     """
-    Calls the forward method of the model with shifted values of the ket variational parameters.
+    Forward method of the Overlap model with shifted values of the ket variational parameters.
 
     Args:
         model (Overlap): Overlap model
@@ -45,9 +45,10 @@ def spsa_gradient_step(
     epsilon: float,
     fm_dict: dict,
 ) -> Tensor:
-    """
-    Single step to calculate the first order gradient of the given Overlap model
-    via the SPSA approximation.
+    """Single step of the first order SPSA gradient.
+
+    Calculates a single step of the SPSA algorithm to calculate
+    the first order gradient of the given Overlap model.
 
     Args:
         model (Overlap): Overlap model
@@ -75,9 +76,10 @@ def spsa_2gradient_step(
     epsilon: float,
     fm_dict: dict,
 ) -> Tensor:
-    """
-    Single step to calculate the second order gradient of the given Overlap model
-    via the SPSA approximation.
+    """Single step of the second order SPSA gradient.
+
+    Calculates a single step of the SPSA algorithm to calculate
+    the second order gradient of the given Overlap model.
 
     TODO: implement recursively using the first order function
 

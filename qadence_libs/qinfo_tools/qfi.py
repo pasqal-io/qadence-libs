@@ -15,6 +15,7 @@ from qadence_libs.qinfo_tools.utils import hessian
 
 def _symsqrt(A: Tensor) -> Tensor:
     """Computes the square root of a Symmetric or Hermitian positive definite matrix.
+
     Code from https://github.com/pytorch/pytorch/issues/25481#issuecomment-1032789228
     """
     L, Q = torch.linalg.eigh(A)
@@ -56,9 +57,7 @@ def get_quantum_fisher(
     overlap_method: OverlapMethod = OverlapMethod.EXACT,
     diff_mode: DiffMode = DiffMode.AD,  # type: ignore
 ) -> Tensor:
-    """Returns the exact Quantum Fisher Information (QFI) matrix of the quantum circuit
-    with given values for the variational parameters (vparams_values) and the
-    feature map (fm_dict).
+    """Returns the exact Quantum Fisher Information (QFI) matrix.
 
     Args:
         circuit (QuantumCircuit): The Quantum circuit we want to compute the QFI matrix of.
@@ -110,8 +109,7 @@ def get_quantum_fisher_spsa(
     overlap_method: OverlapMethod = OverlapMethod.EXACT,
     diff_mode: DiffMode = DiffMode.AD,  # type: ignore
 ) -> tuple[Tensor, Tensor]:
-    """Function to calculate the Quantum Fisher Information (QFI) matrix with the
-    SPSA approximation.
+    """Returns the a SPSA-approximation of the Quantum Fisher Information (QFI) matrix.
 
     Args:
         circuit (QuantumCircuit): The Quantum circuit we want to compute the QFI matrix of.
