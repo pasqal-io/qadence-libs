@@ -28,10 +28,11 @@ def hessian(output: Tensor, inputs: list[Tensor]) -> Tensor:
     n_params = len(inputs)
     hess = torch.empty((n_params, n_params))
     for i in range(n_params):
+        jacobian_var = jacobian[i]
         ovrlp_grad2 = grad(
-            jacobian[i],
+            jacobian_var,
             inputs,
-            torch.ones_like(jacobian[i]),
+            torch.ones_like(jacobian_var),
             create_graph=True,
             allow_unused=True,
         )
