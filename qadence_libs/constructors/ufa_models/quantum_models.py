@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numpy as np
-from eic_aero.ufa_models.config import AnsatzConfig, FeatureMapConfig, ObservableConfig
 from qadence.blocks import chain, kron
 from qadence.blocks.abstract import AbstractBlock
 from qadence.blocks.composite import ChainBlock
@@ -20,6 +19,8 @@ from qadence.models import QNN
 from qadence.operations import CNOT, RX, RY, H
 from qadence.register import Register
 from qadence.types import Interaction, ReuploadScaling, Strategy
+
+from .config import AnsatzConfig, FeatureMapConfig, ObservableConfig
 
 
 def _create_support_arrays(
