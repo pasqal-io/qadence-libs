@@ -40,7 +40,7 @@ class QNG(Optimizer):
             grad_vec = torch.Tensor([v.grad.data for v in group["params"] if v.requires_grad])
 
             # Calculate the EXACT metric tensor
-            metric_tensor = (1 / 4) * get_quantum_fisher(
+            metric_tensor = 0.25 * get_quantum_fisher(
                 group["circuit"],
                 vparams_values=group["params"],
             )
@@ -119,8 +119,7 @@ class QNG_SPSA(Optimizer):
                 )
 
                 # Get transformed gradient vector
-                metric_tensor = (1 / 4) * qfi_mat_positive_sd
-                metric_tensor_inv = torch.linalg.pinv(metric_tensor)
+                metric_tensor_inv = torch.linalg.pinv(0.25 * qfi_mat_positive_sd)
                 transf_grad = torch.matmul(metric_tensor_inv, grad_vec)
 
                 # Update parameters
