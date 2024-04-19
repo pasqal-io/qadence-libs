@@ -48,14 +48,12 @@ DATASETS = [quadratic_dataset(samples), sin_dataset(samples)]
 
 @pytest.mark.parametrize("dataset", DATASETS)
 @pytest.mark.parametrize("optim_config", OPTIMIZERS_CONFIG)
-@pytest.mark.parametrize("n_qubits", [2])
-@pytest.mark.parametrize("n_layers", [1])
 def test_optims(
     dataset: tuple[Tensor, Tensor],
     optim_config: dict,
-    n_qubits: int,
-    n_layers: int,
 ) -> None:
+    n_qubits = 2
+    n_layers = 1
     circuit, model = create_hea_model(n_qubits, n_layers)
     model.reset_vparams(torch.rand((len(model.vparams))))
 
