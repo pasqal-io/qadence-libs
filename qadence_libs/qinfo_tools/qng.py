@@ -10,7 +10,14 @@ from qadence_libs.qinfo_tools.qfi import get_quantum_fisher, get_quantum_fisher_
 
 
 class QNG(Optimizer):
-    """Implements the Quantum Natural Gradient Algorithm."""
+    """Implements the Quantum Natural Gradient Algorithm.
+
+    WARNING: This class implements the exact QNG optimizer, which is very inefficient
+    both in time and memory as it calculates the exact Quantum Fisher Information of
+    the circuit at every iteration. Therefore, it is not meant to be run with medium
+    to large circuits. Other approximations such as the QNG-SPSA optimizer are much
+    more efficient while retaining good performance.
+    """
 
     def __init__(
         self,
@@ -19,6 +26,22 @@ class QNG(Optimizer):
         lr: float = required,
         beta: float = 10e-3,
     ):
+        """
+        Args:
+            params (tuple | torch.Tensor): Variational parameters to be updated
+            circuit (QuantumCircuit): Quantum circuit. Needed to compute the QFI matrix
+            lr (float): Learning rate.
+            beta (float):
+                Shift applied to the QFI matrix before inversion to ensure numerical stability. Defaults to 10e-3.
+        """
+
+        if not 0.0 <= lr:
+            raise ValueError(f"Invalid learning rate: {lr}")
+        if not 0.0 <= beta:
+            raise ValueError(f"Invalid beta value: {beta}")
+        if not isinstance(circuit, QuantumCircuit):
+            raise ValueError("The circuit should be an instance of qadence.QuantumCircuit")
+
         defaults = dict(circuit=circuit, lr=lr, beta=beta)
         super(QNG, self).__init__(params, defaults)
 
@@ -80,6 +103,26 @@ class QNG_SPSA(Optimizer):
         beta: float = 10e-3,
         epsilon: float = 10e-2,
     ):
+        """
+        Args:
+            params (tuple | torch.Tensor): Variational parameters to be updated
+            circuit (QuantumCircuit): Quantum circuit. Required to compute the QFI matrix.
+            lr (float): Learning rate.
+            iteration (int): Current iteration. Required to compute the SPSA estimator of the QFI.
+            beta (float):
+                Shift applied to the QFI matrix before inversion to ensure numerical stability. Defaults to 10e-3.
+            epsilon (float): Finite shift applied when computing the SPSA derivatives.
+        """
+
+        if not 0.0 <= lr:
+            raise ValueError(f"Invalid learning rate: {lr}")
+        if not isinstance(circuit, QuantumCircuit):
+            raise ValueError("The circuit should be an instance of qadence.QuantumCircuit")
+        if not 0.0 <= beta:
+            raise ValueError(f"Invalid beta value: {beta}")
+        if not 0.0 <= epsilon:
+            raise ValueError(f"Invalid epsilon value: {epsilon}")
+
         self.current_iteration = iteration
         self.prev_qfi_estimator = 0
         defaults = dict(
