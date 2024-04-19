@@ -28,15 +28,6 @@ def sin_dataset(samples: int) -> tuple[Tensor, Tensor]:
     return x_train, torch.sin(x_train)
 
 
-def create_hea_model(n_qubits: int, layers: int) -> tuple[QuantumCircuit, QNN]:
-    fm = feature_map(n_qubits, range(n_qubits), param="phi", fm_type=BasisSet.CHEBYSHEV)
-    ansatz = hea(n_qubits, depth=layers, param_prefix="theta", operations=[RX, RY], periodic=True)
-    circuit = QuantumCircuit(n_qubits, fm, ansatz)
-    obs = hamiltonian_factory(n_qubits, detuning=Z)
-    model = QNN(circuit, [obs])
-    return circuit, model
-
-
 # Optimizers config [optim, config, iters]
 OPTIMIZERS_CONFIG = [
     (QNG, {"lr": 0.1, "beta": 10e-2}, 20),
@@ -48,13 +39,8 @@ DATASETS = [quadratic_dataset(samples), sin_dataset(samples)]
 
 @pytest.mark.parametrize("dataset", DATASETS)
 @pytest.mark.parametrize("optim_config", OPTIMIZERS_CONFIG)
-def test_optims(
-    dataset: tuple[Tensor, Tensor],
-    optim_config: dict,
-) -> None:
-    n_qubits = 2
-    n_layers = 1
-    circuit, model = create_hea_model(n_qubits, n_layers)
+def test_optims(dataset: tuple[Tensor, Tensor], optim_config: dict, basic_optim_model) -> None:
+    circuit, model = basic_optim_model
     model.reset_vparams(torch.rand((len(model.vparams))))
 
     optim_class, config, iters = optim_config

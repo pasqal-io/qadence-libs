@@ -1,27 +1,17 @@
 from __future__ import annotations
 
 import random
-
 import numpy as np
 import torch
-from qadence import BasisSet, QuantumCircuit
-from qadence.constructors import feature_map, hea
-from qadence.operations import RX
 from torch import Size, allclose
 
+from qadence import QuantumCircuit
 from qadence_libs.qinfo_tools import get_quantum_fisher, get_quantum_fisher_spsa
 
 SEED = 42
 torch.manual_seed(SEED)
 np.random.seed(SEED)
 random.seed(SEED)
-
-
-def create_hea_circuit(n_qubits: int, layers: int) -> QuantumCircuit:
-    fm = feature_map(n_qubits, range(n_qubits), param="phi", fm_type=BasisSet.CHEBYSHEV)
-    ansatz = hea(n_qubits, depth=layers, param_prefix="theta", operations=[RX], periodic=True)
-    circuit = QuantumCircuit(n_qubits, ansatz, fm)
-    return circuit
 
 
 # Textbook QFI matrix for create_hea_circuit(2, 2)
@@ -35,8 +25,8 @@ textbook_qfi = torch.Tensor(
 )
 
 
-def test_qfi_exact() -> None:
-    circuit = create_hea_circuit(2, 2)
+def test_qfi_exact(basic_optim_circuit: QuantumCircuit) -> None:
+    circuit = basic_optim_circuit
     vparams_vals = [torch.Tensor([1.0]) for vparam in circuit.parameters() if vparam.trainable]
     fm_dict = {"phi": torch.Tensor([0])}
     qfi_mat_exact = get_quantum_fisher(circuit, vparams_values=vparams_vals, fm_dict=fm_dict)
@@ -46,8 +36,8 @@ def test_qfi_exact() -> None:
     assert allclose(textbook_qfi, qfi_mat_exact)
 
 
-def test_qfi_spsa() -> None:
-    circuit = create_hea_circuit(2, 2)
+def test_qfi_spsa(basic_optim_circuit: QuantumCircuit) -> None:
+    circuit = basic_optim_circuit
     vparams_vals = [torch.Tensor([1.0]) for vparam in circuit.parameters() if vparam.trainable]
     fm_dict = {"phi": torch.Tensor([0])}
 
