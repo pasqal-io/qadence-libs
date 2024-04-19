@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import random
+
 import numpy as np
 import torch
+from qadence import QuantumCircuit
 from torch import Size, allclose
 
-from qadence import QuantumCircuit
 from qadence_libs.qinfo_tools import get_quantum_fisher, get_quantum_fisher_spsa
 
 SEED = 42

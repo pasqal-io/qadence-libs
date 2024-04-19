@@ -5,9 +5,7 @@ import random
 import numpy as np
 import pytest
 import torch
-from qadence import QNN, BasisSet, QuantumCircuit, hamiltonian_factory
-from qadence.constructors import feature_map, hea
-from qadence.operations import RX, RY, Z
+from qadence import QuantumCircuit
 from torch import Tensor
 
 from qadence_libs.qinfo_tools import QNG, QNG_SPSA
@@ -39,7 +37,9 @@ DATASETS = [quadratic_dataset(samples), sin_dataset(samples)]
 
 @pytest.mark.parametrize("dataset", DATASETS)
 @pytest.mark.parametrize("optim_config", OPTIMIZERS_CONFIG)
-def test_optims(dataset: tuple[Tensor, Tensor], optim_config: dict, basic_optim_model) -> None:
+def test_optims(
+    dataset: tuple[Tensor, Tensor], optim_config: dict, basic_optim_model: QuantumCircuit
+) -> None:
     circuit, model = basic_optim_model
     model.reset_vparams(torch.rand((len(model.vparams))))
 

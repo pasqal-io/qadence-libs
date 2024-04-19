@@ -1,9 +1,10 @@
 # use this file for configuring test fixtures and
 # functions common to every test
-from pytest import fixture
+from __future__ import annotations
 
-from qadence import BasisSet, QuantumCircuit, QNN
-from qadence.constructors import feature_map, hea, hamiltonian_factory
+from pytest import fixture
+from qadence import QNN, BasisSet, QuantumCircuit
+from qadence.constructors import feature_map, hamiltonian_factory, hea
 from qadence.operations import RX, RY, Z
 
 N_QUBITS_OPTIM = 2

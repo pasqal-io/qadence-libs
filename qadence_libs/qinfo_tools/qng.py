@@ -28,11 +28,13 @@ class QNG(Optimizer):
     ):
         """
         Args:
+
             params (tuple | torch.Tensor): Variational parameters to be updated
             circuit (QuantumCircuit): Quantum circuit. Needed to compute the QFI matrix
             lr (float): Learning rate.
             beta (float):
-                Shift applied to the QFI matrix before inversion to ensure numerical stability. Defaults to 10e-3.
+                Shift applied to the QFI matrix before inversion to ensure numerical stability.
+                Defaults to 10e-3.
         """
 
         if not 0.0 <= lr:
@@ -105,13 +107,16 @@ class QNG_SPSA(Optimizer):
     ):
         """
         Args:
+
             params (tuple | torch.Tensor): Variational parameters to be updated
             circuit (QuantumCircuit): Quantum circuit. Required to compute the QFI matrix.
             lr (float): Learning rate.
             iteration (int): Current iteration. Required to compute the SPSA estimator of the QFI.
             beta (float):
-                Shift applied to the QFI matrix before inversion to ensure numerical stability. Defaults to 10e-3.
-            epsilon (float): Finite shift applied when computing the SPSA derivatives.
+                Shift applied to the QFI matrix before inversion to ensure numerical stability.
+                Defaults to 10e-3.
+            epsilon (float):
+                Finite shift applied when computing the SPSA derivatives. Defaults to 10e-2.
         """
 
         if not 0.0 <= lr:

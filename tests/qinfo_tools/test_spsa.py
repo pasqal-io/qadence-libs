@@ -5,12 +5,9 @@ import random
 import numpy as np
 import pytest
 import torch
-from qadence import BasisSet, Overlap, QuantumCircuit
-from qadence.constructors import feature_map, hea
-from qadence.operations import RX, RY
+from qadence import Overlap, QuantumCircuit
 from torch import Size
 
-from qadence import QuantumCircuit
 from qadence_libs.qinfo_tools.spsa import _shifted_overlap, spsa_2gradient_step
 
 SEED = 42
