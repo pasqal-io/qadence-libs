@@ -50,7 +50,7 @@ class QNG(Optimizer):
     def __setstate__(self, state):  # type: ignore
         super().__setstate__(state)
 
-    def step(self, closure: Callable | None = None) -> torch.Tensor:
+    def step(self, closure: Callable | None = None) -> Tensor:
         """Performs a single optimization step of the QNG algorithm.
 
         Arguments:
