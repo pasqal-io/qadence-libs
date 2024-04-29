@@ -13,7 +13,7 @@ N_LAYERS_OPTIM = 2
 
 @fixture
 def basic_optim_circuit() -> QuantumCircuit:
-    fm = feature_map(N_QUBITS_OPTIM, range(N_QUBITS_OPTIM), param="phi", fm_type=BasisSet.CHEBYSHEV)
+    fm = feature_map(N_QUBITS_OPTIM, range(N_QUBITS_OPTIM), param="phi", fm_type=BasisSet.FOURIER)
     ansatz = hea(
         N_QUBITS_OPTIM, N_LAYERS_OPTIM, param_prefix="theta", operations=[RX], periodic=True
     )
@@ -23,7 +23,7 @@ def basic_optim_circuit() -> QuantumCircuit:
 
 @fixture
 def basic_optim_model() -> tuple[QuantumCircuit, QNN]:
-    fm = feature_map(N_QUBITS_OPTIM, range(N_QUBITS_OPTIM), param="phi", fm_type=BasisSet.CHEBYSHEV)
+    fm = feature_map(N_QUBITS_OPTIM, range(N_QUBITS_OPTIM), param="phi", fm_type=BasisSet.FOURIER)
     ansatz = hea(
         N_QUBITS_OPTIM,
         depth=N_LAYERS_OPTIM,
