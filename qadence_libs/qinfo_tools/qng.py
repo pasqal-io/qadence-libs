@@ -37,9 +37,9 @@ class QNG(Optimizer):
                 Defaults to 10e-3.
         """
 
-        if not 0.0 <= lr:
+        if 0.0 > lr:
             raise ValueError(f"Invalid learning rate: {lr}")
-        if not 0.0 <= beta:
+        if 0.0 >= beta:
             raise ValueError(f"Invalid beta value: {beta}")
         if not isinstance(circuit, QuantumCircuit):
             raise ValueError(f"The circuit should be an instance of {type(QuantumCircuit)}")
@@ -119,13 +119,13 @@ class QNG_SPSA(Optimizer):
                 Finite shift applied when computing the SPSA derivatives. Defaults to 10e-2.
         """
 
-        if not 0.0 <= lr:
+        if 0.0 > lr:
             raise ValueError(f"Invalid learning rate: {lr}")
         if not isinstance(circuit, QuantumCircuit):
             raise ValueError("The circuit should be an instance of qadence.QuantumCircuit")
-        if not 0.0 <= beta:
+        if 0.0 >= beta:
             raise ValueError(f"Invalid beta value: {beta}")
-        if not 0.0 <= epsilon:
+        if 0.0 > epsilon:
             raise ValueError(f"Invalid epsilon value: {epsilon}")
 
         self.current_iteration = iteration
