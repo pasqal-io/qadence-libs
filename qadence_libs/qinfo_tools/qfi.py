@@ -52,9 +52,9 @@ def get_quantum_fisher(
     circuit: QuantumCircuit,
     vparams_values: Iterable[float | Tensor] | None = None,
     fm_dict: dict[str, Tensor] = dict(),
-    backend: BackendName = BackendName.PYQTORCH,  # type: ignore
+    backend: BackendName = BackendName.PYQTORCH,
     overlap_method: OverlapMethod = OverlapMethod.EXACT,
-    diff_mode: DiffMode = DiffMode.AD,  # type: ignore
+    diff_mode: DiffMode = DiffMode.AD,
 ) -> Tensor:
     """Returns the exact Quantum Fisher Information (QFI) matrix.
 
@@ -108,9 +108,9 @@ def get_quantum_fisher_spsa(
     previous_qfi_estimator: Tensor | None = None,
     epsilon: float = 10e-3,
     beta: float = 10e-2,
-    backend: BackendName = BackendName.PYQTORCH,  # type: ignore
+    backend: BackendName = BackendName.PYQTORCH,
     overlap_method: OverlapMethod = OverlapMethod.EXACT,
-    diff_mode: DiffMode = DiffMode.AD,  # type: ignore
+    diff_mode: DiffMode = DiffMode.AD,
 ) -> tuple[Tensor, Tensor]:
     """Returns the a SPSA-approximation of the Quantum Fisher Information (QFI) matrix.
 
