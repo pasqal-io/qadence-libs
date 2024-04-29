@@ -85,13 +85,13 @@ def get_quantum_fisher(
     )
 
     # Run overlap model
-    ovrlp = ovrlp_model(bra_param_values=fm_dict, ket_param_values=fm_dict)
+    ovrlp = overlap_model(bra_param_values=fm_dict, ket_param_values=fm_dict)
 
     # Retrieve variational parameters of the overlap model
     # Importantly, the vparams of the overlap model are the vparams of the bra tensor,
     # Which means if we differentiate wrt vparams we are differentiating only wrt the
     # parameters in the bra and not in the ket
-    vparams = [v for v in ovrlp_model._params.values() if v.requires_grad]
+    vparams = [v for v in overlap_model._params.values() if v.requires_grad]
 
     return -2 * hessian(ovrlp, vparams)
 
