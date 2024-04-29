@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import numpy as np
 import torch
 from qadence import Overlap
 from torch import Tensor
