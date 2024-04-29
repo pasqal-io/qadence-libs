@@ -65,6 +65,10 @@ def get_quantum_fisher(
         fm_dict (dict[str, Tensor]): Values of the feature map parameters.
         overlap_method (OverlapMethod, optional): Defaults to OverlapMethod.EXACT.
         diff_mode (DiffMode, optional): Defaults to DiffMode.ad.
+
+    Returns:
+        Tensor:
+            The exact QFI matrix of the circuit.
     """
 
     # Get feature map dictionary (required to run Overlap().forward())
@@ -118,6 +122,10 @@ def get_quantum_fisher_spsa(
         fm_dict (dict[str, Tensor]): Values of the feature map parameters.
         overla p_method (OverlapMethod, optional): Defaults to OverlapMethod.EXACT.
         diff_mode (DiffMode, optional): Defaults to DiffMode.ad.
+
+    Returns:
+        tuple[Tensor, Tensor]:
+            Tuple containing the QFI matrix and its positive semi-definite estimator.
     """
     # Get feature map dictionary (required to run Overlap().forward())
     if not fm_dict:
