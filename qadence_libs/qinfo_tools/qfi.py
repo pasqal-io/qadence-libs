@@ -85,7 +85,7 @@ def get_quantum_fisher(
     )
 
     # Run overlap model
-    ovrlp = overlap_model(bra_param_values=fm_dict, ket_param_values=fm_dict)
+    overlap = overlap_model(bra_param_values=fm_dict, ket_param_values=fm_dict)
 
     # Retrieve variational parameters of the overlap model
     # Importantly, the vparams of the overlap model are the vparams of the bra tensor,
@@ -93,7 +93,7 @@ def get_quantum_fisher(
     # parameters in the bra and not in the ket
     vparams = [v for v in overlap_model._params.values() if v.requires_grad]
 
-    return -2 * hessian(ovrlp, vparams)
+    return -2 * hessian(overlap, vparams)
 
 
 def get_quantum_fisher_spsa(
