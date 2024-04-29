@@ -13,7 +13,9 @@ def _create_random_direction(size: int) -> Tensor:
     Args:
         size (int): Size of the vector
     """
-    return torch.Tensor(np.random.choice([-1, 1], size=(size, 1)))
+    x = torch.bernoulli(0.5 * torch.ones(size)).reshape(size, 1)
+    x[x == 0] = -1
+    return x
 
 
 def _shifted_overlap(
