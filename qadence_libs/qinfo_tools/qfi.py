@@ -27,14 +27,13 @@ def _symsqrt(A: Tensor) -> Tensor:
 
 def _set_circuit_vparams(circuit: QuantumCircuit, vparams_values: Iterable) -> None:
     """Sets the variational parameter values of the circuit."""
-    if vparams_values is not None:
-        blocks = primitive_blocks(circuit.block)
-        iter_index = iter(range(len(blocks)))
-        for block in blocks:
-            params = parameters(block)
-            for p in params:
-                if p.trainable:
-                    p.value = float(vparams_values[next(iter_index)])  # type: ignore
+    blocks = primitive_blocks(circuit.block)
+    iter_index = iter(range(len(blocks)))
+    for block in blocks:
+        params = parameters(block)
+        for p in params:
+            if p.trainable:
+                p.value = float(vparams_values[next(iter_index)])  # type: ignore
 
 
 def _get_fm_dict(circuit: QuantumCircuit) -> dict:
