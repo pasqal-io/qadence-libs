@@ -42,7 +42,7 @@ class QNG(Optimizer):
         if not 0.0 <= beta:
             raise ValueError(f"Invalid beta value: {beta}")
         if not isinstance(circuit, QuantumCircuit):
-            raise ValueError("The circuit should be an instance of qadence.QuantumCircuit")
+            raise ValueError(f"The circuit should be an instance of {type(QuantumCircuit)}")
 
         defaults = dict(circuit=circuit, lr=lr, beta=beta)
         super(QNG, self).__init__(params, defaults)
