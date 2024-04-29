@@ -76,7 +76,7 @@ def get_quantum_fisher(
         _set_circuit_vparams(circuit, vparams_values)
 
     # Get Overlap() model
-    ovrlp_model = Overlap(
+    overlap_model = Overlap(
         circuit,
         circuit,
         backend=backend,
