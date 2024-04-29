@@ -9,7 +9,7 @@ from torch.optim.optimizer import Optimizer, required
 from qadence_libs.qinfo_tools.qfi import get_quantum_fisher, get_quantum_fisher_spsa
 
 
-class QNG(Optimizer):
+class QuantumNaturalGradient(Optimizer):
     """Implements the Quantum Natural Gradient Algorithm.
 
     WARNING: This class implements the exact QNG optimizer, which is very inefficient
@@ -45,7 +45,7 @@ class QNG(Optimizer):
             raise ValueError(f"The circuit should be an instance of {type(QuantumCircuit)}")
 
         defaults = dict(circuit=circuit, lr=lr, beta=beta)
-        super(QNG, self).__init__(params, defaults)
+        super(QuantumNaturalGradient, self).__init__(params, defaults)
 
     def __setstate__(self, state):  # type: ignore
         super().__setstate__(state)
@@ -87,7 +87,7 @@ class QNG(Optimizer):
         return loss
 
 
-class QNG_SPSA(Optimizer):
+class QuantumNaturalGradientSPSA(Optimizer):
     """
     Implements the Quantum Natural Gradient Algorithm using the SPSA algorithm.
 
@@ -136,7 +136,7 @@ class QNG_SPSA(Optimizer):
             epsilon=epsilon,
             beta=beta,
         )
-        super(QNG_SPSA, self).__init__(params, defaults)
+        super(QuantumNaturalGradientSPSA, self).__init__(params, defaults)
 
     def __setstate__(self, state):  # type: ignore
         super().__setstate__(state)

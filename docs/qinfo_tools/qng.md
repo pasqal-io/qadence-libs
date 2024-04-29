@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 from qadence import QuantumCircuit, QNN, FeatureParameter
 from qadence import kron, tag, hea, RX, Z, hamiltonian_factory
 
-from qadence_libs.qinfo_tools import QNG, QNG_SPSA
+from qadence_libs.qinfo_tools import QuantumNaturalGradient, QuantumNaturalGradientSPSA
 ```
 
 First, we prepare the Quantum Circuit Learning data. In this case we will fit a simple one-dimensional sin($x$) function:
@@ -116,7 +116,7 @@ for i in range(n_epochs_adam):
 # Train with QNG
 n_epochs_qng = 20
 lr_qng = 0.1
-optimizer = QNG(circ_params_qng, lr=lr_qng, circuit=circuit, beta=0.1)
+optimizer = QuantumNaturalGradient(circ_params_qng, lr=lr_qng, circuit=circuit, beta=0.1)
 loss_qng = []
 for i in range(n_epochs_qng):
     optimizer.zero_grad()
@@ -132,7 +132,7 @@ for i in range(n_epochs_qng):
 # Train with QNG-SPSA
 n_epochs_qng_spsa = 20
 lr_qng_spsa = 0.01
-optimizer = QNG_SPSA(
+optimizer = QuantumNaturalGradientSPSA(
     circ_params_qng_spsa,
     lr=lr_qng_spsa,
     circuit=circuit,

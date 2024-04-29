@@ -8,7 +8,7 @@ import torch
 from qadence import QuantumCircuit
 from torch import Tensor
 
-from qadence_libs.qinfo_tools import QNG, QNG_SPSA
+from qadence_libs.qinfo_tools import QuantumNaturalGradient, QuantumNaturalGradientSPSA
 
 SEED = 42
 torch.manual_seed(SEED)
@@ -28,8 +28,8 @@ def sin_dataset(samples: int) -> tuple[Tensor, Tensor]:
 
 # Optimizers config [optim, config, iters]
 OPTIMIZERS_CONFIG = [
-    (QNG, {"lr": 0.1, "beta": 10e-2}, 20),
-    (QNG_SPSA, {"lr": 0.1, "beta": 10e-2, "epsilon": 0.01}, 20),
+    (QuantumNaturalGradient, {"lr": 0.1, "beta": 10e-2}, 20),
+    (QuantumNaturalGradientSPSA, {"lr": 0.1, "beta": 10e-2, "epsilon": 0.01}, 20),
 ]
 samples = 100
 DATASETS = [quadratic_dataset(samples), sin_dataset(samples)]
