@@ -98,9 +98,12 @@ class QuantumNaturalGradient(Optimizer):
                     # Finite shift the metric tensor to avoid problems when inverting
                     metric_tensor = metric_tensor + group["beta"] * torch.eye(len(grad_vec))
 
-                    # Get transformed gradient vector
-                    metric_tensor_inv = torch.linalg.inv(metric_tensor)
-                    transf_grad = torch.matmul(metric_tensor_inv, grad_vec)
+                    # Get transformed gradient vector solving the least squares problem
+                    transf_grad = torch.linalg.lstsq(
+                        metric_tensor,
+                        grad_vec,
+                        driver="gelsd",
+                    ).solution
 
                     # Update parameters
                     for i, p in enumerate(group["params"]):
@@ -120,9 +123,12 @@ class QuantumNaturalGradient(Optimizer):
                         beta=group["beta"],
                     )
 
-                    # Get transformed gradient vector
-                    metric_tensor_inv = torch.linalg.pinv(0.25 * qfi_mat_positive_sd)
-                    transf_grad = torch.matmul(metric_tensor_inv, grad_vec)
+                    # Get transformed gradient vector solving the least squares problem
+                    transf_grad = torch.linalg.lstsq(
+                        0.25 * qfi_mat_positive_sd,
+                        grad_vec,
+                        driver="gelsd",
+                    ).solution
 
                     # Update parameters
                     for i, p in enumerate(group["params"]):
