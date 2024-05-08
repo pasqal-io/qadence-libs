@@ -8,7 +8,8 @@ import torch
 from qadence import QuantumCircuit
 from torch import Tensor
 
-from qadence_libs.qinfo_tools import QuantumNaturalGradient, QuantumNaturalGradientSPSA
+from qadence_libs.qinfo_tools import QuantumNaturalGradient
+from qadence_libs.types import FisherApproximation
 
 SEED = 42
 torch.manual_seed(SEED)
@@ -28,8 +29,25 @@ def sin_dataset(samples: int) -> tuple[Tensor, Tensor]:
 
 # Optimizers config [optim, config, iters]
 OPTIMIZERS_CONFIG = [
-    (QuantumNaturalGradient, {"lr": 0.1, "beta": 10e-2}, 20),
-    (QuantumNaturalGradientSPSA, {"lr": 0.1, "beta": 10e-2, "epsilon": 0.01}, 20),
+    (
+        QuantumNaturalGradient,
+        {
+            "lr": 0.1,
+            "approximation": FisherApproximation.EXACT,
+            "beta": 0.01,
+        },
+        20,
+    ),
+    (
+        QuantumNaturalGradient,
+        {
+            "lr": 0.01,
+            "approximation": FisherApproximation.SPSA,
+            "beta": 0.1,
+            "epsilon": 0.01,
+        },
+        20,
+    ),
 ]
 samples = 100
 DATASETS = [quadratic_dataset(samples), sin_dataset(samples)]
@@ -41,7 +59,7 @@ def test_optims(
     dataset: tuple[Tensor, Tensor], optim_config: dict, basic_optim_model: QuantumCircuit
 ) -> None:
     circuit, model = basic_optim_model
-    model.reset_vparams(torch.rand((len(model.vparams))))
+    model.reset_vparams(torch.ones((len(model.vparams))))
 
     optim_class, config, iters = optim_config
     x_train, y_train = dataset
