@@ -34,4 +34,4 @@ def basic_optim_model() -> tuple[QuantumCircuit, QNN]:
     circuit = QuantumCircuit(N_QUBITS_OPTIM, fm, ansatz)
     obs = hamiltonian_factory(N_QUBITS_OPTIM, detuning=Z)
     model = QNN(circuit, [obs])
-    return circuit, model
+    return model

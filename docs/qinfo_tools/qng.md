@@ -12,7 +12,7 @@ $$
   F_{i j}(\theta)=-\left.2 \frac{\partial}{\partial \theta_i} \frac{\partial}{\partial \theta_j}\left|\left\langle\psi\left(\theta^{\prime}\right) \mid \psi(\theta)\right\rangle\right|^2\right|_{{\theta}^{\prime}=\theta}
 $$
 
-However, computing the above expression is a costly operation scaling quadratically with the number of parameters in the variational quantum circuit. It is thus usual to use approximate methods when dealing with the QFI matrix. Qadence provides a SPSA-based implementation of the Quantum Natural Gradient[^3]. The [SPSA](https://www.jhuapl.edu/spsa/) (Simultaneous Perturbation Stochastic Approximation) algorithm is a well known gradient-based algorithm based on finite differences. QNG-SPSA constructs an iterative approximation to the QFI matrix with a constant number of circuit evaluations that does not scale with the number of parameters. Although the SPSA algorithm outputs a rough approximation of the QFI matrix, the QNG-SPSA has been proven to work well while being a very efficient method due to the constant overhead in circuit evaluations (only 6 extra evalutions per iteration).
+However, computing the above expression is a costly operation scaling quadratically with the number of parameters in the variational quantum circuit. It is thus usual to use approximate methods when dealing with the QFI matrix. Qadence provides a SPSA-based implementation of the Quantum Natural Gradient[^3]. The [SPSA](https://www.jhuapl.edu/spsa/) (Simultaneous Perturbation Stochastic Approximation) algorithm is a well known gradient-based algorithm based on finite differences. QNG-SPSA constructs an iterative approximation to the QFI matrix with a constant number of circuit evaluations that does not scale with the number of parameters. Although the SPSA algorithm outputs a rough approximation of the QFI matrix, the QNG-SPSA has been proven to work well while being a very efficient method due to the constant overhead in circuit evaluations (only 6 extra evaluations per iteration).
 
 In this tutorial, we use the QNG and QNG-SPSA optimizers with the Quantum Circuit Learning algorithm, a variational quantum algorithm which uses Quantum Neural Networks as universal function approximators.
 
@@ -32,7 +32,7 @@ from qadence_libs.types import FisherApproximation
 First, we prepare the Quantum Circuit Learning data. In this case we will fit a simple one-dimensional sin($x$) function:
 ```python exec="on" source="material-block" html="1" session="main"
 # Ensure reproducibility
-seed = 42
+seed = 0
 torch.manual_seed(seed)
 random.seed(seed)
 
@@ -78,35 +78,34 @@ observable = hamiltonian_factory(n_qubits, detuning= Z)
 
 ## Optimizers
 
-We will experiment with three different optimizers: ADAM, QNG and QNG-SPSA. For each of them we create a new instance of the same quantum model to benchmark the optimizers indepently under the same conditions.
+We will experiment with three different optimizers: ADAM, QNG and QNG-SPSA. To train a model with the different optimizers we will create a `QuantumModel` and reset the values of their variational parameters before each training loop so that all of them have the same starting point. 
 
 ```python exec="on" source="material-block" html="1" session="main"
-# Build circuit
+# Build circuit and model
 circuit = QuantumCircuit(n_qubits, feature_map, ansatz)
+model = QNN(circuit, [observable])
 
-# Build models
-model_adam = QNN(circuit, [observable])
-model_qng = QNN(circuit, [observable])
-model_qng_spsa = QNN(circuit, [observable])
+# Loss function
+mse_loss = torch.nn.MSELoss()
 
-# Retrieve the circuit parameters for the QNG-based optimizers
-circ_params_qng = [param for param in model_qng.parameters() if param.requires_grad]
-circ_params_qng_spsa = [param for param in model_qng_spsa.parameters() if param.requires_grad]
+# Initial parameter values
+initial_params = torch.rand(model.num_vparams)
 ```
 
-We can now train each of the models with the corresponding optimizer:
-
+We can now train the model with the different corresponding optimizers:
 ### ADAM
 ```python exec="on" source="material-block" html="1" session="main"
 # Train with ADAM
 n_epochs_adam = 20
 lr_adam = 0.1
-mse_loss = torch.nn.MSELoss()  # standard PyTorch loss function
-optimizer = torch.optim.Adam(model_adam.parameters(), lr=lr_adam)  # standard PyTorch Adam optimizer
+
+model.reset_vparams(initial_params)
+optimizer = torch.optim.Adam(model.parameters(), lr=lr_adam)  
+
 loss_adam = []
 for i in range(n_epochs_adam):
     optimizer.zero_grad()
-    loss = mse_loss(model_adam(values=x_train).squeeze(), y_train.squeeze())
+    loss = mse_loss(model(values=x_train).squeeze(), y_train.squeeze())
     loss_adam.append(float(loss))
     loss.backward()
     optimizer.step()
@@ -117,17 +116,20 @@ for i in range(n_epochs_adam):
 # Train with QNG
 n_epochs_qng = 20
 lr_qng = 0.1
+
+model.reset_vparams(initial_params)
 optimizer = QuantumNaturalGradient(
-    circ_params_qng,
+    model.parameters(),
     lr=lr_qng,
     approximation=FisherApproximation.EXACT,
-    circuit=circuit,
+    model=model,
     beta=0.1,
 )
+
 loss_qng = []
 for i in range(n_epochs_qng):
     optimizer.zero_grad()
-    loss = mse_loss(model_qng(values=x_train).squeeze(), y_train.squeeze())
+    loss = mse_loss(model(values=x_train).squeeze(), y_train.squeeze())
     loss_qng.append(float(loss))
     loss.backward()
     optimizer.step()
@@ -138,11 +140,13 @@ for i in range(n_epochs_qng):
 # Train with QNG-SPSA
 n_epochs_qng_spsa = 20
 lr_qng_spsa = 0.01
+
+model.reset_vparams(initial_params)
 optimizer = QuantumNaturalGradient(
-    circ_params_qng_spsa,
+    model.parameters(),
     lr=lr_qng_spsa,
-    approximation = FisherApproximation.SPSA,
-    circuit=circuit,
+    approximation=FisherApproximation.SPSA,
+    model=model,
     beta=0.1,
     epsilon=0.01,
 )
@@ -150,7 +154,7 @@ optimizer = QuantumNaturalGradient(
 loss_qng_spsa = []
 for i in range(n_epochs_qng_spsa):
     optimizer.zero_grad()
-    loss = mse_loss(model_qng_spsa(values=x_train).squeeze(), y_train.squeeze())
+    loss = mse_loss(model(values=x_train).squeeze(), y_train.squeeze())
     loss_qng_spsa.append(float(loss))
     loss.backward()
     optimizer.step()

@@ -58,14 +58,14 @@ DATASETS = [quadratic_dataset(samples), sin_dataset(samples)]
 def test_optims(
     dataset: tuple[Tensor, Tensor], optim_config: dict, basic_optim_model: QuantumCircuit
 ) -> None:
-    circuit, model = basic_optim_model
+    model = basic_optim_model
     model.reset_vparams(torch.ones((len(model.vparams))))
 
     optim_class, config, iters = optim_config
     x_train, y_train = dataset
     mse_loss = torch.nn.MSELoss()
     vparams = [p for p in model.parameters() if p.requires_grad]
-    optimizer = optim_class(params=vparams, circuit=circuit, **config)
+    optimizer = optim_class(params=vparams, model=model, **config)
     initial_loss = mse_loss(model(x_train).squeeze(), y_train.squeeze())
     for _ in range(iters):
         optimizer.zero_grad()

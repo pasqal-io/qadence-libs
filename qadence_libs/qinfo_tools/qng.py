@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Callable
 
 import torch
-from qadence import QuantumCircuit
+from qadence import QuantumCircuit, QuantumModel
 from torch.optim.optimizer import Optimizer, required
 
 from qadence_libs.qinfo_tools.qfi import get_quantum_fisher, get_quantum_fisher_spsa
@@ -26,7 +26,7 @@ class QuantumNaturalGradient(Optimizer):
     def __init__(
         self,
         params: tuple | torch.Tensor,
-        circuit: QuantumCircuit = required,
+        model: QuantumModel = required,
         lr: float = required,
         approximation: FisherApproximation | str = FisherApproximation.SPSA,
         beta: float = 10e-3,
@@ -36,7 +36,9 @@ class QuantumNaturalGradient(Optimizer):
         Args:
 
             params (tuple | torch.Tensor): Variational parameters to be updated
-            circuit (QuantumCircuit): Quantum circuit. Needed to compute the QFI matrix
+            model (QuantumModel):
+                Model to be optimized. The optimizers needs to access its quantum circuit
+                to compute the QFI matrix.
             lr (float): Learning rate.
             approximation (FisherApproximation):
                 Approximation used to compute the QFI matrix. Defaults to FisherApproximation.SPSA
@@ -49,8 +51,10 @@ class QuantumNaturalGradient(Optimizer):
 
         if 0.0 > lr:
             raise ValueError(f"Invalid learning rate: {lr}")
-        if not isinstance(circuit, QuantumCircuit):
-            raise ValueError("The circuit should be an instance of qadence.QuantumCircuit")
+        if not isinstance(model, QuantumModel):
+            raise ValueError(
+                f"The model should be an instance of '<class QuantumModel>'. Got {type(model)}"
+            )
         if 0.0 >= beta:
             raise ValueError(f"Invalid beta value: {beta}")
         if 0.0 > epsilon:
@@ -60,8 +64,14 @@ class QuantumNaturalGradient(Optimizer):
             self.iteration = 0
             self.prev_qfi_estimator = None
 
+        self.circuit = model._circuit.abstract
+        if not isinstance(self.circuit, QuantumCircuit):
+            raise ValueError(
+                f"The circuit should be an instance of '<class QuantumCircuit>'. Got {type(self.circuit)}"
+            )
+
         defaults = dict(
-            circuit=circuit,
+            model=model,
             lr=lr,
             approximation=approximation,
             beta=beta,
@@ -84,14 +94,16 @@ class QuantumNaturalGradient(Optimizer):
             loss = closure()
 
         for group in self.param_groups:
+
+            vparams = [p for p in group["params"] if p.requires_grad]
             approximation = group["approximation"]
-            grad_vec = torch.Tensor([v.grad.data for v in group["params"] if v.requires_grad])
+            grad_vec = torch.tensor([v.grad.data for v in vparams])
 
             if approximation == FisherApproximation.EXACT:
                 # Calculate the EXACT metric tensor
                 metric_tensor = 0.25 * get_quantum_fisher(
-                    group["circuit"],
-                    vparams_values=group["params"],
+                    self.circuit,
+                    vparams_values=vparams,
                 )
 
                 with torch.no_grad():
@@ -106,7 +118,7 @@ class QuantumNaturalGradient(Optimizer):
                     ).solution
 
                     # Update parameters
-                    for i, p in enumerate(group["params"]):
+                    for i, p in enumerate(vparams):
                         if p.grad is None:
                             continue
                         p.data.add_(transf_grad[i], alpha=-group["lr"])
@@ -115,9 +127,9 @@ class QuantumNaturalGradient(Optimizer):
                 with torch.no_grad():
                     # Get estimation of the QFI matrix
                     qfi_estimator, qfi_mat_positive_sd = get_quantum_fisher_spsa(
-                        circuit=group["circuit"],
+                        circuit=self.circuit,
                         iteration=self.iteration,
-                        vparams_values=group["params"],
+                        vparams_values=vparams,
                         previous_qfi_estimator=self.prev_qfi_estimator,
                         epsilon=group["epsilon"],
                         beta=group["beta"],
@@ -131,7 +143,7 @@ class QuantumNaturalGradient(Optimizer):
                     ).solution
 
                     # Update parameters
-                    for i, p in enumerate(group["params"]):
+                    for i, p in enumerate(vparams):
                         if p.grad is None:
                             continue
                         p.data.add_(transf_grad[i], alpha=-group["lr"])
@@ -142,7 +154,7 @@ class QuantumNaturalGradient(Optimizer):
             else:
                 raise NotImplementedError(
                     f"Approximation {approximation} of the QNG optimizer "
-                    "is not implemented.Choose an item from the "
+                    "is not implemented. Choose an item from the "
                     f"FisherApproximation enum: {FisherApproximation.list()},"
                 )
 
