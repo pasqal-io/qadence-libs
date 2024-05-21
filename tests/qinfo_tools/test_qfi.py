@@ -15,7 +15,7 @@ np.random.seed(SEED)
 random.seed(SEED)
 
 
-# Textbook QFI matrix for create_hea_circuit(2, 2)
+# Textbook QFI matrix for basic_optim_circuit with 2 qubits and 2 layers.
 textbook_qfi = torch.Tensor(
     [
         [1.0, 0.0, 0.0, 0.0],
@@ -28,18 +28,18 @@ textbook_qfi = torch.Tensor(
 
 def test_qfi_exact(basic_optim_circuit: QuantumCircuit) -> None:
     circuit = basic_optim_circuit
-    vparams_vals = [torch.Tensor([1.0]) for vparam in circuit.parameters() if vparam.trainable]
+    vparams_dict = basic_optim_circuit.parameters()
     fm_dict = {"phi": torch.Tensor([0])}
-    qfi_mat_exact = get_quantum_fisher(circuit, vparams_values=vparams_vals, fm_dict=fm_dict)
+    qfi_mat_exact = get_quantum_fisher(circuit, vparams_dict=vparams_dict, fm_dict=fm_dict)
 
-    n_vparams = len(vparams_vals)
+    n_vparams = len(vparams_dict)
     assert qfi_mat_exact.shape == Size([n_vparams, n_vparams])
     assert allclose(textbook_qfi, qfi_mat_exact)
 
 
 def test_qfi_spsa(basic_optim_circuit: QuantumCircuit) -> None:
     circuit = basic_optim_circuit
-    vparams_vals = [torch.Tensor([1.0]) for vparam in circuit.parameters() if vparam.trainable]
+    vparams_dict = [torch.Tensor([1.0]) for vparam in circuit.parameters() if vparam.trainable]
     fm_dict = {"phi": torch.Tensor([0])}
 
     qfi_mat_spsa = None
@@ -47,7 +47,7 @@ def test_qfi_spsa(basic_optim_circuit: QuantumCircuit) -> None:
         qfi_mat_spsa, qfi_positive_sd = get_quantum_fisher_spsa(
             circuit,
             iteration,
-            vparams_values=vparams_vals,
+            vparams_dict=vparams_dict,
             fm_dict=fm_dict,
             previous_qfi_estimator=qfi_mat_spsa,
             beta=0.1,

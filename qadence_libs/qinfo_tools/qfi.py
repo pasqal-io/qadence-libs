@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Iterable
-
 import torch
 from qadence import Overlap
 from qadence.blocks import parameters, primitive_blocks
@@ -25,18 +23,17 @@ def _symsqrt(A: Tensor) -> Tensor:
     return (Q * L.sqrt().unsqueeze(-2)) @ Q.mH
 
 
-def _set_circuit_vparams(circuit: QuantumCircuit, vparams_values: Iterable) -> None:
+def _set_circuit_vparams(circuit: QuantumCircuit, vparams_dict: dict[str, Tensor]) -> None:
     """Sets the variational parameter values of the circuit."""
     blocks = primitive_blocks(circuit.block)
-    iter_index = iter(range(len(blocks)))
     for block in blocks:
         params = parameters(block)
         for p in params:
             if p.trainable:
-                p.value = float(vparams_values[next(iter_index)])  # type: ignore
+                p.value = vparams_dict[p.name]
 
 
-def _get_fm_dict(circuit: QuantumCircuit) -> dict:
+def _get_fm_dict(circuit: QuantumCircuit) -> dict[str, Tensor]:
     """Returns a dictionary holding the FM parameters of the circuit."""
     fm_dict = {}
     blocks = primitive_blocks(circuit.block)
@@ -50,7 +47,7 @@ def _get_fm_dict(circuit: QuantumCircuit) -> dict:
 
 def get_quantum_fisher(
     circuit: QuantumCircuit,
-    vparams_values: Iterable[float | Tensor] | None = None,
+    vparams_dict: dict[str, Tensor],
     fm_dict: dict[str, Tensor] = dict(),
     backend: BackendName = BackendName.PYQTORCH,
     overlap_method: OverlapMethod = OverlapMethod.EXACT,
@@ -59,10 +56,11 @@ def get_quantum_fisher(
     """Returns the exact Quantum Fisher Information (QFI) matrix.
 
     Args:
-        circuit (QuantumCircuit): The Quantum circuit we want to compute the QFI matrix of.
-        vparams (tuple | list | Tensor | None):
-            Values of the variational parameters where we want to compute the QFI.
-        fm_dict (dict[str, Tensor]): Values of the feature map parameters.
+        circuit (QuantumCircuit): The quantum circuit.
+        vparams_dict (dict[str, Tensor]):
+            Dictionary holding the values of the variational parameters of the circuit.
+        fm_dict (dict[str, Tensor]):
+            Dictionary holding the values of the Feature Map parameters of the circuit.
         overlap_method (OverlapMethod, optional): Defaults to OverlapMethod.EXACT.
         diff_mode (DiffMode, optional): Defaults to DiffMode.ad.
 
@@ -75,9 +73,9 @@ def get_quantum_fisher(
     if not fm_dict:
         fm_dict = _get_fm_dict(circuit)
 
-    # Set the vparam_values
-    if vparams_values is not None:
-        _set_circuit_vparams(circuit, vparams_values)
+    # Set the variational parameters values
+    if vparams_dict:
+        _set_circuit_vparams(circuit, vparams_dict)
 
     # Get Overlap() model
     overlap_model = Overlap(
@@ -96,14 +94,13 @@ def get_quantum_fisher(
     # Which means if we differentiate wrt vparams we are differentiating only wrt the
     # parameters in the bra and not in the ket
     vparams = [v for v in overlap_model._params.values() if v.requires_grad]
-
     return -2 * hessian(overlap, vparams)
 
 
 def get_quantum_fisher_spsa(
     circuit: QuantumCircuit,
     iteration: int,
-    vparams_values: Iterable[float | Tensor] | None = None,
+    vparams_dict: dict[str, Tensor] = dict(),
     fm_dict: dict[str, Tensor] = dict(),
     previous_qfi_estimator: Tensor | None = None,
     epsilon: float = 10e-3,
@@ -115,11 +112,12 @@ def get_quantum_fisher_spsa(
     """Returns the a SPSA-approximation of the Quantum Fisher Information (QFI) matrix.
 
     Args:
-        circuit (QuantumCircuit): The Quantum circuit we want to compute the QFI matrix of.
-        iteration (int): Current number of iteration.
-        vparams_values (tuple | list | Tensor | None):
-            Values of the variational parameters where we want to compute the QFI.
-        fm_dict (dict[str, Tensor]): Values of the feature map parameters.
+        circuit (QuantumCircuit): The quantum circuit.
+        iteration (int): Current iteration in the SPSA iterative loop.
+        vparams_values (dict[str, Tensor]):
+            Dictionary holding the values of the variational parameters of the circuit.
+        fm_dict (dict[str, Tensor]):
+            Dictionary holding the values of the Feature Map parameters of the circuit.
         overla p_method (OverlapMethod, optional): Defaults to OverlapMethod.EXACT.
         diff_mode (DiffMode, optional): Defaults to DiffMode.ad.
 
@@ -131,10 +129,6 @@ def get_quantum_fisher_spsa(
     if not fm_dict:
         fm_dict = _get_fm_dict(circuit)
 
-    # Set variational parameters
-    if vparams_values is not None:
-        _set_circuit_vparams(circuit, vparams_values)
-
     # Get Overlap() model
     ovrlp_model = Overlap(
         circuit,
@@ -145,7 +139,7 @@ def get_quantum_fisher_spsa(
     )
 
     # Calculate the QFI matrix
-    qfi_mat = -2 * spsa_2gradient_step(ovrlp_model, epsilon, fm_dict)
+    qfi_mat = -2 * spsa_2gradient_step(ovrlp_model, epsilon, fm_dict, vparams_dict)
 
     # Calculate the QFI estimator from the old estimator of qfi_mat
     if iteration == 0:

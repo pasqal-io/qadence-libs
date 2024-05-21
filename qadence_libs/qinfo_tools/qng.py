@@ -1,13 +1,17 @@
 from __future__ import annotations
 
-from typing import Callable
+from typing import Callable, Sequence
 
 import torch
 from qadence import QuantumCircuit, QuantumModel
+from qadence.logger import get_logger
+from qadence.ml_tools.models import TransformedModule
 from torch.optim.optimizer import Optimizer, required
 
 from qadence_libs.qinfo_tools.qfi import get_quantum_fisher, get_quantum_fisher_spsa
 from qadence_libs.types import FisherApproximation
+
+logger = get_logger(__name__)
 
 
 class QuantumNaturalGradient(Optimizer):
@@ -25,7 +29,7 @@ class QuantumNaturalGradient(Optimizer):
 
     def __init__(
         self,
-        params: tuple | torch.Tensor,
+        params: Sequence,
         model: QuantumModel = required,
         lr: float = required,
         approximation: FisherApproximation | str = FisherApproximation.SPSA,
@@ -51,24 +55,36 @@ class QuantumNaturalGradient(Optimizer):
 
         if 0.0 > lr:
             raise ValueError(f"Invalid learning rate: {lr}")
-        if not isinstance(model, QuantumModel):
-            raise ValueError(
-                f"The model should be an instance of '<class QuantumModel>'. Got {type(model)}"
-            )
         if 0.0 >= beta:
             raise ValueError(f"Invalid beta value: {beta}")
         if 0.0 > epsilon:
             raise ValueError(f"Invalid epsilon value: {epsilon}")
 
+        if isinstance(model, TransformedModule):
+            logger.warning(
+                "The model is of type '<class TransformedModule>. "
+                "Keep in mind that the QNG optimizer can only optimize circuit variational "
+                "parameter. Input/output shifting/scaling parameters will not be optimized."
+            )
+            # Retrieve the quantum model from the TransformedModule
+            model = model.model
+        if not isinstance(model, QuantumModel):
+            raise TypeError(
+                "The model should be an instance of '<class QuantumModel>' "
+                f"or '<class TransformedModule>'. Got {type(model)}."
+            )
+
+        self.param_dict = model.vparams
+        self.circuit = model._circuit.abstract
+        if not isinstance(self.circuit, QuantumCircuit):
+            raise TypeError(
+                "The circuit should be an instance of '<class QuantumCircuit>'."
+                "Got {type(self.circuit)}"
+            )
+
         if approximation == FisherApproximation.SPSA:
             self.iteration = 0
             self.prev_qfi_estimator = None
-
-        self.circuit = model._circuit.abstract
-        if not isinstance(self.circuit, QuantumCircuit):
-            raise ValueError(
-                f"The circuit should be an instance of '<class QuantumCircuit>'. Got {type(self.circuit)}"
-            )
 
         defaults = dict(
             model=model,
@@ -94,16 +110,20 @@ class QuantumNaturalGradient(Optimizer):
             loss = closure()
 
         for group in self.param_groups:
+            vparams_values = [p for p in group["params"] if p.requires_grad]
 
-            vparams = [p for p in group["params"] if p.requires_grad]
+            # Build the parameter dictionary
+            vparams_dict = dict(zip(self.param_dict.keys(), vparams_values))
+            assert vparams_values == [t for t in vparams_dict.values()]
+
             approximation = group["approximation"]
-            grad_vec = torch.tensor([v.grad.data for v in vparams])
+            grad_vec = torch.tensor([v.grad.data for v in vparams_values])
 
             if approximation == FisherApproximation.EXACT:
                 # Calculate the EXACT metric tensor
                 metric_tensor = 0.25 * get_quantum_fisher(
                     self.circuit,
-                    vparams_values=vparams,
+                    vparams_dict=vparams_dict,
                 )
 
                 with torch.no_grad():
@@ -118,7 +138,7 @@ class QuantumNaturalGradient(Optimizer):
                     ).solution
 
                     # Update parameters
-                    for i, p in enumerate(vparams):
+                    for i, p in enumerate(vparams_values):
                         if p.grad is None:
                             continue
                         p.data.add_(transf_grad[i], alpha=-group["lr"])
@@ -129,7 +149,7 @@ class QuantumNaturalGradient(Optimizer):
                     qfi_estimator, qfi_mat_positive_sd = get_quantum_fisher_spsa(
                         circuit=self.circuit,
                         iteration=self.iteration,
-                        vparams_values=vparams,
+                        vparams_dict=vparams_dict,
                         previous_qfi_estimator=self.prev_qfi_estimator,
                         epsilon=group["epsilon"],
                         beta=group["beta"],
@@ -143,7 +163,7 @@ class QuantumNaturalGradient(Optimizer):
                     ).solution
 
                     # Update parameters
-                    for i, p in enumerate(vparams):
+                    for i, p in enumerate(vparams_values):
                         if p.grad is None:
                             continue
                         p.data.add_(transf_grad[i], alpha=-group["lr"])

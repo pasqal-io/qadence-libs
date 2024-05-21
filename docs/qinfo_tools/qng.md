@@ -78,7 +78,7 @@ observable = hamiltonian_factory(n_qubits, detuning= Z)
 
 ## Optimizers
 
-We will experiment with three different optimizers: ADAM, QNG and QNG-SPSA. To train a model with the different optimizers we will create a `QuantumModel` and reset the values of their variational parameters before each training loop so that all of them have the same starting point. 
+We will experiment with three different optimizers: ADAM, QNG and QNG-SPSA. To train a model with the different optimizers we will create a `QuantumModel` and reset the values of their variational parameters before each training loop so that all of them have the same starting point.
 
 ```python exec="on" source="material-block" html="1" session="main"
 # Build circuit and model
@@ -100,7 +100,7 @@ n_epochs_adam = 20
 lr_adam = 0.1
 
 model.reset_vparams(initial_params)
-optimizer = torch.optim.Adam(model.parameters(), lr=lr_adam)  
+optimizer = torch.optim.Adam(model.parameters(), lr=lr_adam)
 
 loss_adam = []
 for i in range(n_epochs_adam):

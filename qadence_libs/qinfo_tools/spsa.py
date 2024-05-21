@@ -20,8 +20,8 @@ def _create_random_direction(size: int) -> Tensor:
 def _shifted_overlap(
     model: Overlap,
     shift: Tensor,
-    fm_dict: dict,
-    vparams_dict: dict,
+    fm_dict: dict[str, Tensor],
+    vparams_dict: dict[str, Tensor],
 ) -> Tensor:
     """
     Forward method of the Overlap model with shifted values of the ket variational parameters.
@@ -29,8 +29,8 @@ def _shifted_overlap(
     Args:
         model (Overlap): Overlap model
         shift (float): Quantity of the shift
-        fm_dict (dict): Feature map dictionary
-        vparams_dict (dict): Variational parameter dictionary
+        fm_dict (dict[str, Tensor]): Feature map dictionary
+        vparams_dict (dict[str, Tensor]): Variational parameter dictionary
     """
     shifted_vparams_dict = {k: (v + s) for (k, v), s in zip(vparams_dict.items(), shift)}
 
@@ -44,7 +44,8 @@ def _shifted_overlap(
 def spsa_gradient_step(
     model: Overlap,
     epsilon: float,
-    fm_dict: dict,
+    fm_dict: dict[str, Tensor],
+    vparams_dict: dict[str, Tensor] = dict(),
 ) -> Tensor:
     """Single step of the first order SPSA gradient.
 
@@ -54,10 +55,11 @@ def spsa_gradient_step(
     Args:
         model (Overlap): Overlap model
         epsilon (float): Finite step size
-        fm_dict (dict | None): Feature map dictionary
+        fm_dict (dict[str, Tensor]): Feature map dictionary
+        vparams_dict (dict[str, Tensor]): Variational parameters dictionary
     """
-
-    vparams_dict = {k: v for (k, v) in model._params.items() if v.requires_grad}
+    if not vparams_dict:
+        vparams_dict = {k: v for (k, v) in model._params.items() if v.requires_grad}
 
     # Create random direction
     random_direction = _create_random_direction(size=model.num_vparams)
@@ -75,7 +77,8 @@ def spsa_gradient_step(
 def spsa_2gradient_step(
     model: Overlap,
     epsilon: float,
-    fm_dict: dict,
+    fm_dict: dict[str, Tensor],
+    vparams_dict: dict[str, Tensor] = dict(),
 ) -> Tensor:
     """Single step of the second order SPSA gradient.
 
@@ -87,9 +90,11 @@ def spsa_2gradient_step(
     Args:
         model (Overlap): Overlap model
         epsilon (float): Finite step size
-        fm_dict (dict | None): Feature map dictionary
+        fm_dict (dict[str, Tensor]): Feature map dictionary
+        vparams_dict (dict[str, Tensor]): Variational parameters dictionary
     """
-    vparams_dict = {k: v for (k, v) in model._params.items() if v.requires_grad}
+    if not vparams_dict:
+        vparams_dict = {k: v for (k, v) in model._params.items() if v.requires_grad}
 
     # Create random directions
     rand_dir1 = _create_random_direction(size=model.num_vparams)
