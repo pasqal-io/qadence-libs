@@ -64,7 +64,7 @@ class QuantumNaturalGradient(Optimizer):
             logger.warning(
                 "The model is of type '<class TransformedModule>. "
                 "Keep in mind that the QNG optimizer can only optimize circuit variational "
-                "parameter. Input/output shifting/scaling parameters will not be optimized."
+                "parameter. Input and output shifting/scaling parameters will not be optimized."
             )
             # Retrieve the quantum model from the TransformedModule
             model = model.model
@@ -82,10 +82,6 @@ class QuantumNaturalGradient(Optimizer):
                 "Got {type(self.circuit)}"
             )
 
-        if approximation == FisherApproximation.SPSA:
-            self.iteration = 0
-            self.prev_qfi_estimator = None
-
         defaults = dict(
             model=model,
             lr=lr,
@@ -95,8 +91,10 @@ class QuantumNaturalGradient(Optimizer):
         )
         super(QuantumNaturalGradient, self).__init__(params, defaults)
 
-    def __setstate__(self, state):  # type: ignore
-        super().__setstate__(state)
+        if approximation == FisherApproximation.SPSA:
+            state = self.state["state"]
+            state.setdefault("iter", 0)
+            state.setdefault("qfi_estimator", None)
 
     def step(self, closure: Callable | None = None) -> torch.Tensor:
         """Performs a single optimization step of the QNG algorithm.
@@ -113,12 +111,13 @@ class QuantumNaturalGradient(Optimizer):
             vparams_values = [p for p in group["params"] if p.requires_grad]
 
             # Build the parameter dictionary
+            # We rely on the `vparam()` method in `QuantumModel` and the
+            # `parameters()` in `nn.Module` to give the same param ordering.
+            # We test for this in `test_qng.py`.
             vparams_dict = dict(zip(self.param_dict.keys(), vparams_values))
-            assert vparams_values == [t for t in vparams_dict.values()]
 
             approximation = group["approximation"]
             grad_vec = torch.tensor([v.grad.data for v in vparams_values])
-
             if approximation == FisherApproximation.EXACT:
                 # Calculate the EXACT metric tensor
                 metric_tensor = 0.25 * get_quantum_fisher(
@@ -144,13 +143,14 @@ class QuantumNaturalGradient(Optimizer):
                         p.data.add_(transf_grad[i], alpha=-group["lr"])
 
             elif approximation == FisherApproximation.SPSA:
+                state = self.state["state"]
                 with torch.no_grad():
                     # Get estimation of the QFI matrix
                     qfi_estimator, qfi_mat_positive_sd = get_quantum_fisher_spsa(
                         circuit=self.circuit,
-                        iteration=self.iteration,
+                        iteration=state["iter"],
                         vparams_dict=vparams_dict,
-                        previous_qfi_estimator=self.prev_qfi_estimator,
+                        previous_qfi_estimator=state["qfi_estimator"],
                         epsilon=group["epsilon"],
                         beta=group["beta"],
                     )
@@ -168,14 +168,14 @@ class QuantumNaturalGradient(Optimizer):
                             continue
                         p.data.add_(transf_grad[i], alpha=-group["lr"])
 
-                self.iteration += 1
-                self.prev_qfi_estimator = qfi_estimator
+                state["iter"] += 1
+                state["qfi_estimator"] = qfi_estimator
 
             else:
                 raise NotImplementedError(
                     f"Approximation {approximation} of the QNG optimizer "
                     "is not implemented. Choose an item from the "
-                    f"FisherApproximation enum: {FisherApproximation.list()},"
+                    f"FisherApproximation enum: {FisherApproximation.list()}."
                 )
 
         return loss
