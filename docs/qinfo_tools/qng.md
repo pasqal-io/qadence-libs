@@ -16,6 +16,7 @@ However, computing the above expression is a costly operation scaling quadratica
 
 In this tutorial, we use the QNG and QNG-SPSA optimizers with the Quantum Circuit Learning algorithm, a variational quantum algorithm which uses Quantum Neural Networks as universal function approximators.
 
+Keep in mind that only *circuit* parameters can be optimized with the QNG optimizer, since we can only calculate the QFI matrix of parameters contained in the circuit. If your model holds other trainable, non-circuit parameters, such as scaling or shifting of the input/output, another optimizer must be used for to optimize those parameters.
 ```python exec="on" source="material-block" html="1" session="main"
 import torch
 from torch.utils.data import random_split
