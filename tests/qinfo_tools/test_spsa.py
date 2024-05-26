@@ -5,7 +5,7 @@ import random
 import numpy as np
 import pytest
 import torch
-from qadence import Overlap, QuantumCircuit
+from qadence import QNN, Overlap
 from torch import Size
 
 from qadence_libs.qinfo_tools.spsa import _shifted_overlap, spsa_2gradient_step
@@ -18,8 +18,8 @@ random.seed(SEED)
 
 @pytest.mark.parametrize("shift", [0.0, 0.1])
 @pytest.mark.parametrize("phi", [0.0, 0.1])
-def test_shifted_overlap(shift: float, phi: float, basic_optim_circuit: QuantumCircuit) -> None:
-    circuit = basic_optim_circuit
+def test_shifted_overlap(shift: float, phi: float, textbook_qfi_model: QNN) -> None:
+    circuit = textbook_qfi_model._circuit.abstract
     fm_dict = {"phi": torch.Tensor([phi])}
 
     ovrlp_model = Overlap(circuit, circuit)
@@ -39,11 +39,10 @@ def test_shifted_overlap(shift: float, phi: float, basic_optim_circuit: QuantumC
 
 
 @pytest.mark.parametrize("epsilon", [0.01, 0.001])
-def test_spsa_2gradient(epsilon: float, basic_optim_circuit: QuantumCircuit) -> None:
-    circuit = basic_optim_circuit
+def test_spsa_2gradient(epsilon: float, textbook_qfi_model: QNN) -> None:
+    circuit = textbook_qfi_model._circuit.abstract
     fm_dict = {"phi": torch.Tensor([0.0])}
     ovrlp_model = Overlap(circuit, circuit)
-
     hess_spsa = spsa_2gradient_step(ovrlp_model, epsilon, fm_dict)
 
     assert hess_spsa.shape == Size([ovrlp_model.num_vparams, ovrlp_model.num_vparams])

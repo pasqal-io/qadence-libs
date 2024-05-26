@@ -7,31 +7,35 @@ from qadence import QNN, BasisSet, QuantumCircuit
 from qadence.constructors import feature_map, hamiltonian_factory, hea
 from qadence.operations import RX, RY, Z
 
-N_QUBITS_OPTIM = 2
-N_LAYERS_OPTIM = 2
-
 
 @fixture
-def basic_optim_circuit() -> QuantumCircuit:
-    fm = feature_map(N_QUBITS_OPTIM, range(N_QUBITS_OPTIM), param="phi", fm_type=BasisSet.FOURIER)
+def textbook_qfi_model() -> QNN:
+    n_qubits, n_layers = [2, 2]
+    fm = feature_map(n_qubits, range(n_qubits), param="phi", fm_type=BasisSet.FOURIER)
     ansatz = hea(
-        N_QUBITS_OPTIM, N_LAYERS_OPTIM, param_prefix="theta", operations=[RX], periodic=True
+        n_qubits,
+        n_layers,
+        param_prefix="theta",
+        operations=[RX],
+        periodic=True,
     )
-    circuit = QuantumCircuit(N_QUBITS_OPTIM, ansatz, fm)
-    return circuit
+    circuit = QuantumCircuit(n_qubits, ansatz, fm)
+    obs = hamiltonian_factory(n_qubits, detuning=Z)
+    return QNN(circuit, [obs])
 
 
 @fixture
-def basic_optim_model() -> tuple[QuantumCircuit, QNN]:
-    fm = feature_map(N_QUBITS_OPTIM, range(N_QUBITS_OPTIM), param="phi", fm_type=BasisSet.FOURIER)
+def basic_optim_model() -> QNN:
+    n_qubits, n_layers = [2, 2]
+    fm = feature_map(n_qubits, range(n_qubits), param="phi", fm_type=BasisSet.FOURIER)
     ansatz = hea(
-        N_QUBITS_OPTIM,
-        depth=N_LAYERS_OPTIM,
+        n_qubits,
+        depth=n_layers,
         param_prefix="theta",
         operations=[RX, RY],
         periodic=True,
     )
-    circuit = QuantumCircuit(N_QUBITS_OPTIM, fm, ansatz)
-    obs = hamiltonian_factory(N_QUBITS_OPTIM, detuning=Z)
+    circuit = QuantumCircuit(n_qubits, fm, ansatz)
+    obs = hamiltonian_factory(n_qubits, detuning=Z)
     model = QNN(circuit, [obs])
     return model

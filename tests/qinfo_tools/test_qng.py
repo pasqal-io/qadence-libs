@@ -30,7 +30,6 @@ def sin_dataset(samples: int) -> tuple[Tensor, Tensor]:
 # Optimizers config [optim, config, iters]
 OPTIMIZERS_CONFIG = [
     (
-        QuantumNaturalGradient,
         {
             "lr": 0.1,
             "approximation": FisherApproximation.EXACT,
@@ -39,7 +38,6 @@ OPTIMIZERS_CONFIG = [
         20,
     ),
     (
-        QuantumNaturalGradient,
         {
             "lr": 0.01,
             "approximation": FisherApproximation.SPSA,
@@ -61,11 +59,11 @@ def test_optims(
     model = basic_optim_model
     model.reset_vparams(torch.ones((len(model.vparams))))
 
-    optim_class, config, iters = optim_config
+    config, iters = optim_config
     x_train, y_train = dataset
     mse_loss = torch.nn.MSELoss()
     vparams = [p for p in model.parameters() if p.requires_grad]
-    optimizer = optim_class(params=vparams, model=model, **config)
+    optimizer = QuantumNaturalGradient(params=vparams, model=model, **config)
     initial_loss = mse_loss(model(x_train).squeeze(), y_train.squeeze())
     for _ in range(iters):
         optimizer.zero_grad()
@@ -74,5 +72,21 @@ def test_optims(
         optimizer.step()
 
     assert initial_loss > 2.0 * loss
-    if hasattr(optimizer, "current_iteration"):
-        assert optimizer.current_iteration == iters
+
+    if config["approximation"] == FisherApproximation.SPSA:
+        assert optimizer.state["state"]["iter"] == iters
+        assert optimizer.state["state"]["qfi_estimator"] is not None
+
+
+def test_parameter_ordering(basic_optim_model: QuantumCircuit) -> None:
+    model = basic_optim_model
+    model.reset_vparams(torch.rand((len(model.vparams))))
+    vparams_torch = [p.data for p in model.parameters() if p.requires_grad]
+    vparams_qadence = [v.data for v in model.vparams.values()]
+    assert len(vparams_torch) == len(vparams_qadence)
+    msg = (
+        "The ordering of the output of the `vparams()` method in QuantumModel"
+        + "and the `parameters()` method in Torch is not consistent"
+        + "for variational parameters."
+    )
+    assert vparams_torch == vparams_qadence, msg
