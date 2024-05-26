@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import torch
-from qadence import Overlap
+from qadence import Overlap, QuantumCircuit
 from qadence.blocks import parameters, primitive_blocks
-from qadence.circuit import QuantumCircuit
 from qadence.types import BackendName, DiffMode, OverlapMethod
 from torch import Tensor
 
@@ -47,7 +46,7 @@ def _get_fm_dict(circuit: QuantumCircuit) -> dict[str, Tensor]:
 
 def get_quantum_fisher(
     circuit: QuantumCircuit,
-    vparams_dict: dict[str, Tensor],
+    vparams_dict: dict[str, Tensor] = dict(),
     fm_dict: dict[str, Tensor] = dict(),
     backend: BackendName = BackendName.PYQTORCH,
     overlap_method: OverlapMethod = OverlapMethod.EXACT,
@@ -68,12 +67,12 @@ def get_quantum_fisher(
         Tensor:
             The exact QFI matrix of the circuit.
     """
-
-    # Get feature map dictionary (required to run Overlap().forward())
+    # Retrieve feature parameters if they are not given as inputs
+    # The FM dictionary is needed for the forward run of the Overlap() model
     if not fm_dict:
         fm_dict = _get_fm_dict(circuit)
 
-    # Set the variational parameters values
+    # Set variational parameters if given
     if vparams_dict:
         _set_circuit_vparams(circuit, vparams_dict)
 
@@ -125,7 +124,8 @@ def get_quantum_fisher_spsa(
         tuple[Tensor, Tensor]:
             Tuple containing the QFI matrix and its positive semi-definite estimator.
     """
-    # Get feature map dictionary (required to run Overlap().forward())
+    # Retrieve feature parameters if they are not given as inputs
+    # The FM dictionary is needed for the forward run of the Overlap() model
     if not fm_dict:
         fm_dict = _get_fm_dict(circuit)
 
