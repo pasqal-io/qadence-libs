@@ -49,17 +49,17 @@ def test_qfi_spsa(textbook_qfi_model: QNN) -> None:
     vparams_dict = textbook_qfi_model.vparams
     fm_dict = {"phi": torch.Tensor([0])}
     qfi_mat_spsa = None
-    for iteration in range(50):
+    for iteration in range(100):
         qfi_mat_spsa, qfi_positive_sd = get_quantum_fisher_spsa(
             circuit,
             iteration,
             vparams_dict=vparams_dict,
             fm_dict=fm_dict,
             previous_qfi_estimator=qfi_mat_spsa,
-            beta=0.1,
+            beta=0.01,
             epsilon=0.01,
         )
-        if iteration == 1:
+        if iteration == 0:
             initial_nrm = torch.linalg.norm(textbook_qfi - qfi_mat_spsa)
 
     final_nrm = torch.linalg.norm(textbook_qfi - qfi_mat_spsa)
