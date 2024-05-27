@@ -51,6 +51,20 @@ samples = 100
 DATASETS = [quadratic_dataset(samples), sin_dataset(samples)]
 
 
+def test_parameter_ordering(basic_optim_model: QuantumCircuit) -> None:
+    model = basic_optim_model
+    model.reset_vparams(torch.rand((len(model.vparams))))
+    vparams_torch = [p.data for p in model.parameters() if p.requires_grad]
+    vparams_qadence = [v.data for v in model.vparams.values()]
+    assert len(vparams_torch) == len(vparams_qadence)
+    msg = (
+        "The ordering of the output of the `vparams()` method in QuantumModel"
+        + "and the `parameters()` method in Torch is not consistent"
+        + "for variational parameters."
+    )
+    assert vparams_torch == vparams_qadence, msg
+
+
 @pytest.mark.parametrize("dataset", DATASETS)
 @pytest.mark.parametrize("optim_config", OPTIMIZERS_CONFIG)
 def test_optims(
@@ -76,17 +90,3 @@ def test_optims(
     if config["approximation"] == FisherApproximation.SPSA:
         assert optimizer.state["state"]["iter"] == iters
         assert optimizer.state["state"]["qfi_estimator"] is not None
-
-
-def test_parameter_ordering(basic_optim_model: QuantumCircuit) -> None:
-    model = basic_optim_model
-    model.reset_vparams(torch.rand((len(model.vparams))))
-    vparams_torch = [p.data for p in model.parameters() if p.requires_grad]
-    vparams_qadence = [v.data for v in model.vparams.values()]
-    assert len(vparams_torch) == len(vparams_qadence)
-    msg = (
-        "The ordering of the output of the `vparams()` method in QuantumModel"
-        + "and the `parameters()` method in Torch is not consistent"
-        + "for variational parameters."
-    )
-    assert vparams_torch == vparams_qadence, msg

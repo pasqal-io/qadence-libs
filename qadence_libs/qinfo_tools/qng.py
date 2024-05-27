@@ -63,8 +63,8 @@ class QuantumNaturalGradient(Optimizer):
         if isinstance(model, TransformedModule):
             logger.warning(
                 "The model is of type '<class TransformedModule>. "
-                "Keep in mind that the QNG optimizer can only optimize circuit variational "
-                "parameter. Input and output shifting/scaling parameters will not be optimized."
+                "Keep in mind that the QNG optimizer can only optimize circuit "
+                "parameters. Input and output shifting/scaling parameters will not be optimized."
             )
             # Retrieve the quantum model from the TransformedModule
             model = model.model

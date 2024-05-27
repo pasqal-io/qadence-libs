@@ -10,10 +10,10 @@ from qadence_libs.qinfo_tools.spsa import spsa_2gradient_step
 from qadence_libs.qinfo_tools.utils import hessian
 
 
-def _symsqrt(A: Tensor) -> Tensor:
-    """Computes the square root of a Symmetric or Hermitian positive definite matrix.
+def _positive_semidefinite_sqrt(A: Tensor) -> Tensor:
+    """Computes the square root of a real positive semi-definite matrix.
 
-    Code from https://github.com/pytorch/pytorch/issues/25481#issuecomment-1032789228
+    Code taken from https://github.com/pytorch/pytorch/issues/25481#issuecomment-1032789228
     """
     L, Q = torch.linalg.eigh(A)
     zero = torch.zeros((), device=L.device, dtype=L.dtype)
@@ -149,7 +149,7 @@ def get_quantum_fisher_spsa(
         qfi_mat_estimator = a_k * (iteration * previous_qfi_estimator + qfi_mat)  # type: ignore
 
     # Get the positive-semidefinite version of the matrix for the update rule in QNG
-    qfi_mat_positive_sd = _symsqrt(torch.matmul(qfi_mat_estimator, qfi_mat_estimator))
+    qfi_mat_positive_sd = _positive_semidefinite_sqrt(qfi_mat_estimator @ qfi_mat_estimator)
     qfi_mat_positive_sd = qfi_mat_positive_sd + beta * torch.eye(ovrlp_model.num_vparams)
     qfi_mat_positive_sd = qfi_mat_positive_sd / (1 + beta)  # regularization
 
