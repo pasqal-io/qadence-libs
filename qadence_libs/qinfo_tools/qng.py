@@ -89,7 +89,7 @@ class QuantumNaturalGradient(Optimizer):
             beta=beta,
             epsilon=epsilon,
         )
-        super(QuantumNaturalGradient, self).__init__(params, defaults)
+        super().__init__(params, defaults)
 
         if approximation == FisherApproximation.SPSA:
             state = self.state["state"]
@@ -126,7 +126,8 @@ class QuantumNaturalGradient(Optimizer):
                 )
 
                 with torch.no_grad():
-                    # Finite shift the metric tensor to avoid problems when inverting
+                    # Apply a finite shift to the metric tensor to avoid numerical
+                    # stability issues when solving the least squares problem
                     metric_tensor = metric_tensor + group["beta"] * torch.eye(len(grad_vec))
 
                     # Get transformed gradient vector solving the least squares problem
@@ -138,8 +139,6 @@ class QuantumNaturalGradient(Optimizer):
 
                     # Update parameters
                     for i, p in enumerate(vparams_values):
-                        if p.grad is None:
-                            continue
                         p.data.add_(transf_grad[i], alpha=-group["lr"])
 
             elif approximation == FisherApproximation.SPSA:

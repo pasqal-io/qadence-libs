@@ -7,7 +7,7 @@ from torch import Tensor
 
 def _create_random_direction(size: int) -> Tensor:
     """
-    Creates a torch Tensor with elements randomly drawn from {-1,+1}.
+    Creates a torch Tensor with `size` elements randomly drawn from {-1,+1}.
 
     Args:
         size (int): Size of the vector

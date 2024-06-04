@@ -16,7 +16,7 @@ np.random.seed(SEED)
 random.seed(SEED)
 
 
-@pytest.mark.parametrize("shift", [0.0, 0.1])
+@pytest.mark.parametrize("shift", [0.0, 0.1, 0.5])
 @pytest.mark.parametrize("phi", [0.0, 0.1])
 def test_shifted_overlap(shift: float, phi: float, textbook_qfi_model: QNN) -> None:
     circuit = textbook_qfi_model._circuit.abstract

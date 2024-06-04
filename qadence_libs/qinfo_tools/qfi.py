@@ -67,16 +67,13 @@ def get_quantum_fisher(
         Tensor:
             The exact QFI matrix of the circuit.
     """
-    # Retrieve feature parameters if they are not given as inputs
-    # The FM dictionary is needed for the forward run of the Overlap() model
+    # The FM dictionary is needed for the forward method in Overlap()
     if not fm_dict:
         fm_dict = _get_fm_dict(circuit)
 
-    # Set variational parameters if given
     if vparams_dict:
         _set_circuit_vparams(circuit, vparams_dict)
 
-    # Get Overlap() model
     overlap_model = Overlap(
         circuit,
         circuit,
@@ -84,8 +81,6 @@ def get_quantum_fisher(
         diff_mode=diff_mode,
         method=overlap_method,
     )
-
-    # Run overlap model
     overlap = overlap_model(bra_param_values=fm_dict, ket_param_values=fm_dict)
 
     # Retrieve variational parameters of the overlap model
@@ -129,7 +124,6 @@ def get_quantum_fisher_spsa(
     if not fm_dict:
         fm_dict = _get_fm_dict(circuit)
 
-    # Get Overlap() model
     ovrlp_model = Overlap(
         circuit,
         circuit,
