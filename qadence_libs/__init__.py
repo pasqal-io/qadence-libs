@@ -16,6 +16,7 @@ the __all__ of the qadence namespace. Make sure to keep alphabetical ordering.
 
 list_of_submodules = [
     ".constructors",
+    ".qinfo_tools",
 ]
 
 __all__ = []

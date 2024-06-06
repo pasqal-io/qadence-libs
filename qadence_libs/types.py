@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from qadence.types import StrEnum
 
-__all__ = ["BasisSet", "ReuploadScaling"]
+__all__ = ["BasisSet", "ReuploadScaling", "FisherApproximation"]
 
 
 class BasisSet(StrEnum):
@@ -23,3 +23,12 @@ class ReuploadScaling(StrEnum):
     """Linearly increasing scaling."""
     EXP = "Exponential"
     """Exponentially increasing scaling."""
+
+
+class FisherApproximation(StrEnum):
+    """Approximation to calculate the Quantum Fisher Information (QFI)."""
+
+    EXACT = "Exact"
+    """No approximation, computes the exact QFI."""
+    SPSA = "SPSA"
+    """Approximation via the SPSA algorithm."""

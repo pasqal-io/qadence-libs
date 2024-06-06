@@ -4,7 +4,8 @@ repo_name: "qadence_libs"
 
 nav:
   - Overview: index.md
-  - Sample page: sample_page.md
+  - Quantum information tools:
+    - Quantum Natural Gradient: qinfo_tools/qng.md
 
 theme:
   name: material
@@ -34,6 +35,7 @@ theme:
       name: Switch to light mode
 
 markdown_extensions:
+- footnotes
 - admonition  # for notes
 - pymdownx.arithmatex: # for mathjax
     generic: true
