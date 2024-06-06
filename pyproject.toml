@@ -13,6 +13,7 @@ authors = [
     { name = "Vincent Elfving", email = "vincent.elfving@pasqal.com" },
     { name = "Dominik Seitz", email = "dominik.seitz@pasqal.com" },
     { name = "Niklas Heim", email = "niklas.heim@pasqal.com" },
+    { name = "Ignacio Fernández Graña", email = "ignacio.fernandez-grana@pasqal.com" },
 ]
 requires-python = ">=3.9,<3.12"
 license = {text = "Apache 2.0"}
