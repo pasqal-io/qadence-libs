@@ -179,6 +179,6 @@ print(docsutils.fig_to_html(plt.gcf())) # markdown-exec: hide
 ```
 
 ## References
-[^1]: [Meyer J.](https://quantum-journal.org/papers/q-2021-09-09-539/) Fisher Information in Noisy Intermediate-Scale Quantum Applications
-[^2]: [Stokes et al.](https://quantum-journal.org/papers/q-2020-05-25-269/) - Quantum Natural Gradient
-[^3]: [Gacon et al.](https://arxiv.org/abs/2103.09232) - Simultaneous Perturbation Stochastic Approximation of the Quantum Fisher Information
+[^1]: [Meyer J., Information in Noisy Intermediate-Scale Quantum Applications, _Quantum 5, 539 (2021)_](https://quantum-journal.org/papers/q-2021-09-09-539/) 
+[^2]: [Stokes _et al._, Quantum Natural Gradient, _Quantum 4, 269 (2020)._](https://quantum-journal.org/papers/q-2020-05-25-269/)
+[^3]: [Gacon _et al._, Simultaneous Perturbation Stochastic Approximation of the Quantum Fisher Information, _Quantum 5, 567 (2021)._](https://quantum-journal.org/papers/q-2021-10-20-567/) 
