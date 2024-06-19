@@ -74,7 +74,7 @@ class QuantumNaturalGradient(Optimizer):
                 f"or '<class TransformedModule>'. Got {type(model)}."
             )
 
-        self.param_dict = model.vparams
+        self.model = model
         self.circuit = model._circuit.abstract
         if not isinstance(self.circuit, QuantumCircuit):
             raise TypeError(
@@ -83,16 +83,16 @@ class QuantumNaturalGradient(Optimizer):
             )
 
         defaults = dict(
-            model=model,
             lr=lr,
             approximation=approximation,
             beta=beta,
             epsilon=epsilon,
         )
+
         super().__init__(params, defaults)
 
         if approximation == FisherApproximation.SPSA:
-            state = self.state["state"]
+            state = self.state
             state.setdefault("iter", 0)
             state.setdefault("qfi_estimator", None)
 
@@ -108,13 +108,14 @@ class QuantumNaturalGradient(Optimizer):
             loss = closure()
 
         for group in self.param_groups:
+            # Parameters passed to the optimizer
             vparams_values = [p for p in group["params"] if p.requires_grad]
 
             # Build the parameter dictionary
             # We rely on the `vparam()` method in `QuantumModel` and the
             # `parameters()` in `nn.Module` to give the same param ordering.
             # We test for this in `test_qng.py`.
-            vparams_dict = dict(zip(self.param_dict.keys(), vparams_values))
+            vparams_dict = dict(zip(self.model.vparams.keys(), vparams_values))
 
             approximation = group["approximation"]
             grad_vec = torch.tensor([v.grad.data for v in vparams_values])
@@ -142,7 +143,7 @@ class QuantumNaturalGradient(Optimizer):
                         p.data.add_(transf_grad[i], alpha=-group["lr"])
 
             elif approximation == FisherApproximation.SPSA:
-                state = self.state["state"]
+                state = self.state
                 with torch.no_grad():
                     # Get estimation of the QFI matrix
                     qfi_estimator, qfi_mat_positive_sd = get_quantum_fisher_spsa(
