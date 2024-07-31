@@ -4,7 +4,7 @@ import re
 from typing import Callable
 
 import torch
-from qadence import QNN, QuantumCircuit, QuantumModel
+from qadence import QNN, QuantumCircuit, QuantumModel, Parameter
 from qadence.logger import get_logger
 from torch.optim.optimizer import Optimizer, required
 
@@ -14,8 +14,19 @@ from qadence_libs.types import FisherApproximation
 logger = get_logger(__name__)
 
 
-def _identify_circuit_vparams(model: QuantumModel | QNN, circuit: QuantumCircuit) -> dict:
-    """"""
+def _identify_circuit_vparams(
+    model: QuantumModel | QNN, circuit: QuantumCircuit
+) -> dict[str, Parameter]:
+    """Returns the parameters of the model that are circuit parameters
+
+     Args:
+        model (QuantumModel|QNN): The model
+        circuit (QuantumCircuit): The quantum circuit
+
+    Returns:
+        dict[str, Parameter]:
+            Dictionary containing the circuit parameters
+    """
     non_circuit_vparams = []
     circ_vparams = {}
     pattern = r"_params\."
@@ -23,6 +34,7 @@ def _identify_circuit_vparams(model: QuantumModel | QNN, circuit: QuantumCircuit
         n = re.sub(pattern, "", n)
         if p.requires_grad:
             print(n, p)
+            print(type(p))
             if n in circuit.parameters():
                 circ_vparams[n] = p
             else:
@@ -65,7 +77,6 @@ class QuantumNaturalGradient(Optimizer):
     ):
         """
         Args:
-
             model (QuantumModel):
                 Model whose parameters are to be optimized
             lr (float): Learning rate.
