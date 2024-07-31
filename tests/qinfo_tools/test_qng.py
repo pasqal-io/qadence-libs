@@ -76,8 +76,7 @@ def test_optims(
     config, iters = optim_config
     x_train, y_train = dataset
     mse_loss = torch.nn.MSELoss()
-    vparams = [p for p in model.parameters() if p.requires_grad]
-    optimizer = QuantumNaturalGradient(params=vparams, model=model, **config)
+    optimizer = QuantumNaturalGradient(model=model, **config)
     initial_loss = mse_loss(model(x_train).squeeze(), y_train.squeeze())
     for _ in range(iters):
         optimizer.zero_grad()
@@ -88,5 +87,5 @@ def test_optims(
     assert initial_loss > 2.0 * loss
 
     if config["approximation"] == FisherApproximation.SPSA:
-        assert optimizer.state["state"]["iter"] == iters
-        assert optimizer.state["state"]["qfi_estimator"] is not None
+        assert optimizer.state["iter"] == iters
+        assert optimizer.state["qfi_estimator"] is not None

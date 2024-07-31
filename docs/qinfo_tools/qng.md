@@ -120,10 +120,9 @@ lr_qng = 0.1
 
 model.reset_vparams(initial_params)
 optimizer = QuantumNaturalGradient(
-    model.parameters(),
+    model=model,
     lr=lr_qng,
     approximation=FisherApproximation.EXACT,
-    model=model,
     beta=0.1,
 )
 
@@ -144,10 +143,9 @@ lr_qng_spsa = 0.01
 
 model.reset_vparams(initial_params)
 optimizer = QuantumNaturalGradient(
-    model.parameters(),
+    model=model,
     lr=lr_qng_spsa,
     approximation=FisherApproximation.SPSA,
-    model=model,
     beta=0.1,
     epsilon=0.01,
 )

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Callable, Sequence
+import re
+from typing import Callable
 
 import torch
-from qadence import QuantumCircuit, QuantumModel
+from qadence import QNN, QuantumCircuit, QuantumModel
 from qadence.logger import get_logger
-from qadence.ml_tools.models import TransformedModule
 from torch.optim.optimizer import Optimizer, required
 
 from qadence_libs.qinfo_tools.qfi import get_quantum_fisher, get_quantum_fisher_spsa
@@ -14,11 +14,39 @@ from qadence_libs.types import FisherApproximation
 logger = get_logger(__name__)
 
 
+def _identify_circuit_vparams(model: QuantumModel | QNN, circuit: QuantumCircuit) -> dict:
+    """"""
+    non_circuit_vparams = []
+    circ_vparams = {}
+    pattern = r"_params\."
+    for n, p in model.named_parameters():
+        n = re.sub(pattern, "", n)
+        if p.requires_grad:
+            print(n, p)
+            if n in circuit.parameters():
+                circ_vparams[n] = p
+            else:
+                non_circuit_vparams.append(n)
+
+    if len(non_circuit_vparams) > 0:
+        msg = f"""Parameters {non_circuit_vparams} are non-circuit trainable parameters.
+                 Since the QNG optimizer can only optimize circuit parameters, these
+                 parameter will not be optimized. Please use another optimizer for the
+                 non-circuit parameters."""
+        logger.warning(msg)
+
+    return circ_vparams
+
+
 class QuantumNaturalGradient(Optimizer):
     """Implements the Quantum Natural Gradient Algorithm.
 
     There are currently two variants of the algorithm implemented: exact QNG and
     the SPSA approximation.
+
+    Unlike other torch optimizers, QuantumNaturalGradient does not take a `Sequence`
+    of parameters as an argument, but rather the QuantumModel whose parameters are to be
+    optimized. All circuit parameters in the QuantumModel will be optimized.
 
     WARNING: The exact QNG optimizer is very inefficient both in time and memory as
     it calculates the exact Quantum Fisher Information of the circuit at every
@@ -29,8 +57,7 @@ class QuantumNaturalGradient(Optimizer):
 
     def __init__(
         self,
-        params: Sequence,
-        model: QuantumModel = required,
+        model: QuantumModel | QNN = required,
         lr: float = required,
         approximation: FisherApproximation | str = FisherApproximation.SPSA,
         beta: float = 10e-3,
@@ -39,10 +66,8 @@ class QuantumNaturalGradient(Optimizer):
         """
         Args:
 
-            params (tuple | torch.Tensor): Variational parameters to be updated
             model (QuantumModel):
-                Model to be optimized. The optimizers needs to access its quantum circuit
-                to compute the QFI matrix.
+                Model whose parameters are to be optimized
             lr (float): Learning rate.
             approximation (FisherApproximation):
                 Approximation used to compute the QFI matrix. Defaults to FisherApproximation.SPSA
@@ -60,27 +85,22 @@ class QuantumNaturalGradient(Optimizer):
         if 0.0 > epsilon:
             raise ValueError(f"Invalid epsilon value: {epsilon}")
 
-        if isinstance(model, TransformedModule):
-            logger.warning(
-                "The model is of type '<class TransformedModule>. "
-                "Keep in mind that the QNG optimizer can only optimize circuit "
-                "parameters. Input and output shifting/scaling parameters will not be optimized."
-            )
-            # Retrieve the quantum model from the TransformedModule
-            model = model.model
         if not isinstance(model, QuantumModel):
             raise TypeError(
-                "The model should be an instance of '<class QuantumModel>' "
-                f"or '<class TransformedModule>'. Got {type(model)}."
+                f"""The model should be an instance of '<class QuantumModel>'
+                or '<class TransformedModule>'. Got {type(model)}."""
             )
 
         self.model = model
         self.circuit = model._circuit.abstract
         if not isinstance(self.circuit, QuantumCircuit):
             raise TypeError(
-                "The circuit should be an instance of '<class QuantumCircuit>'."
-                "Got {type(self.circuit)}"
+                f"""The circuit should be an instance of '<class QuantumCircuit>'.
+                Got {type(self.circuit)}"""
             )
+
+        self._params_dict = _identify_circuit_vparams(model, self.circuit)
+        params = list(self._params_dict.values())
 
         defaults = dict(
             lr=lr,
@@ -90,6 +110,9 @@ class QuantumNaturalGradient(Optimizer):
         )
 
         super().__init__(params, defaults)
+
+        if len(self.param_groups) != 1:
+            raise ValueError("QNG doesn't support per-parameter options (parameter groups)")
 
         if approximation == FisherApproximation.SPSA:
             state = self.state
@@ -107,75 +130,102 @@ class QuantumNaturalGradient(Optimizer):
         if closure is not None:
             loss = closure()
 
-        for group in self.param_groups:
-            # Parameters passed to the optimizer
-            vparams_values = [p for p in group["params"] if p.requires_grad]
+        assert len(self.param_groups) == 1
+        group = self.param_groups[0]
 
-            # Build the parameter dictionary
-            # We rely on the `vparam()` method in `QuantumModel` and the
-            # `parameters()` in `nn.Module` to give the same param ordering.
-            # We test for this in `test_qng.py`.
-            vparams_dict = dict(zip(self.model.vparams.keys(), vparams_values))
+        approximation = group["approximation"]
+        beta = group["beta"]
+        epsilon = group["epsilon"]
+        lr = group["lr"]
+        circuit = self.circuit
+        vparams_dict = self._params_dict
+        vparams = group["params"]
+        grad_vec = torch.tensor([v.grad.data for v in vparams])
 
-            approximation = group["approximation"]
-            grad_vec = torch.tensor([v.grad.data for v in vparams_values])
-            if approximation == FisherApproximation.EXACT:
-                # Calculate the EXACT metric tensor
-                metric_tensor = 0.25 * get_quantum_fisher(
-                    self.circuit,
-                    vparams_dict=vparams_dict,
-                )
-
-                with torch.no_grad():
-                    # Apply a finite shift to the metric tensor to avoid numerical
-                    # stability issues when solving the least squares problem
-                    metric_tensor = metric_tensor + group["beta"] * torch.eye(len(grad_vec))
-
-                    # Get transformed gradient vector solving the least squares problem
-                    transf_grad = torch.linalg.lstsq(
-                        metric_tensor,
-                        grad_vec,
-                        driver="gelsd",
-                    ).solution
-
-                    # Update parameters
-                    for i, p in enumerate(vparams_values):
-                        p.data.add_(transf_grad[i], alpha=-group["lr"])
-
-            elif approximation == FisherApproximation.SPSA:
-                state = self.state
-                with torch.no_grad():
-                    # Get estimation of the QFI matrix
-                    qfi_estimator, qfi_mat_positive_sd = get_quantum_fisher_spsa(
-                        circuit=self.circuit,
-                        iteration=state["iter"],
-                        vparams_dict=vparams_dict,
-                        previous_qfi_estimator=state["qfi_estimator"],
-                        epsilon=group["epsilon"],
-                        beta=group["beta"],
-                    )
-
-                    # Get transformed gradient vector solving the least squares problem
-                    transf_grad = torch.linalg.lstsq(
-                        0.25 * qfi_mat_positive_sd,
-                        grad_vec,
-                        driver="gelsd",
-                    ).solution
-
-                    # Update parameters
-                    for i, p in enumerate(vparams_values):
-                        if p.grad is None:
-                            continue
-                        p.data.add_(transf_grad[i], alpha=-group["lr"])
-
-                state["iter"] += 1
-                state["qfi_estimator"] = qfi_estimator
-
-            else:
-                raise NotImplementedError(
-                    f"Approximation {approximation} of the QNG optimizer "
-                    "is not implemented. Choose an item from the "
-                    f"FisherApproximation enum: {FisherApproximation.list()}."
-                )
+        if approximation == FisherApproximation.EXACT:
+            qng_exact(vparams, grad_vec, vparams_dict, lr, circuit, beta)
+        elif approximation == FisherApproximation.SPSA:
+            qng_spsa(vparams, grad_vec, vparams_dict, lr, circuit, self.state, epsilon, beta)
+        else:
+            raise NotImplementedError(
+                f"""Approximation {approximation} of the QNG optimizer
+                is not implemented. Choose an item from the
+                FisherApproximation enum: {FisherApproximation.list()}."""
+            )
 
         return loss
+
+
+def qng_exact(
+    vparams: list,
+    grad_vec: list,
+    vparams_dict: dict,
+    lr: float,
+    circuit: QuantumCircuit,
+    beta: float,
+) -> None:
+    """Functional API that performs exact QNG algorithm computation.
+
+    See :class:`~qadence_libs.qinfo_tools.QuantumNaturalGradient` for details.
+    """
+    # EXACT metric tensor
+    metric_tensor = 0.25 * get_quantum_fisher(
+        circuit,
+        vparams_dict=vparams_dict,
+    )
+    with torch.no_grad():
+        # Apply a finite shift to the metric tensor to avoid numerical
+        # stability issues when solving the least squares problem
+        metric_tensor = metric_tensor + beta * torch.eye(len(grad_vec))
+
+        # Get transformed gradient vector solving the least squares problem
+        transf_grad = torch.linalg.lstsq(
+            metric_tensor,
+            grad_vec,
+            driver="gelsd",
+        ).solution
+
+        # Update parameters
+        for i, p in enumerate(vparams):
+            p.data.add_(transf_grad[i], alpha=-lr)
+
+
+def qng_spsa(
+    vparams: list,
+    grad_vec: list,
+    vparams_dict: dict,
+    lr: float,
+    circuit: QuantumCircuit,
+    state: dict,
+    epsilon: float,
+    beta: float,
+) -> None:
+    """Functional API that performs the QNG-SPSA algorithm computation.
+
+    See :class:`~qadence_libs.qinfo_tools.QuantumNaturalGradient` for details.
+    """
+    # Get estimation of the QFI matrix
+    qfi_estimator, qfi_mat_positive_sd = get_quantum_fisher_spsa(
+        circuit=circuit,
+        iteration=state["iter"],
+        vparams_dict=vparams_dict,
+        previous_qfi_estimator=state["qfi_estimator"],
+        epsilon=epsilon,
+        beta=beta,
+    )
+
+    # Get transformed gradient vector solving the least squares problem
+    transf_grad = torch.linalg.lstsq(
+        0.25 * qfi_mat_positive_sd,
+        grad_vec,
+        driver="gelsd",
+    ).solution
+
+    # Update parameters
+    for i, p in enumerate(vparams):
+        if p.grad is None:
+            continue
+        p.data.add_(transf_grad[i], alpha=-lr)
+
+    state["iter"] += 1
+    state["qfi_estimator"] = qfi_estimator
