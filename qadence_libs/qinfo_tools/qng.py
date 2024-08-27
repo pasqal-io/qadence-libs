@@ -4,7 +4,7 @@ import re
 from typing import Callable
 
 import torch
-from qadence import QNN, QuantumCircuit, QuantumModel, Parameter
+from qadence import QNN, Parameter, QuantumCircuit, QuantumModel
 from qadence.logger import get_logger
 from torch.optim.optimizer import Optimizer, required
 
@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 def _identify_circuit_vparams(
     model: QuantumModel | QNN, circuit: QuantumCircuit
 ) -> dict[str, Parameter]:
-    """Returns the parameters of the model that are circuit parameters
+    """Returns the parameters of the model that are circuit parameters.
 
      Args:
         model (QuantumModel|QNN): The model
@@ -33,18 +33,16 @@ def _identify_circuit_vparams(
     for n, p in model.named_parameters():
         n = re.sub(pattern, "", n)
         if p.requires_grad:
-            print(n, p)
-            print(type(p))
             if n in circuit.parameters():
                 circ_vparams[n] = p
             else:
                 non_circuit_vparams.append(n)
 
     if len(non_circuit_vparams) > 0:
-        msg = f"""Parameters {non_circuit_vparams} are non-circuit trainable parameters.
-                 Since the QNG optimizer can only optimize circuit parameters, these
-                 parameter will not be optimized. Please use another optimizer for the
-                 non-circuit parameters."""
+        msg = f"""Parameters {non_circuit_vparams} are trainable parameters of the model
+                 which are not part of the quantum circuit. Since the QNG optimizer can
+                 only optimize circuit parameters, these parameter will not be optimized.
+                 Please use another optimizer for the non-circuit parameters."""
         logger.warning(msg)
 
     return circ_vparams
@@ -77,8 +75,9 @@ class QuantumNaturalGradient(Optimizer):
     ):
         """
         Args:
+
             model (QuantumModel):
-                Model whose parameters are to be optimized
+                Model whose (circuit) parameters are to be optimized
             lr (float): Learning rate.
             approximation (FisherApproximation):
                 Approximation used to compute the QFI matrix. Defaults to FisherApproximation.SPSA
@@ -86,7 +85,7 @@ class QuantumNaturalGradient(Optimizer):
                 Shift applied to the QFI matrix before inversion to ensure numerical stability.
                 Defaults to 10e-3.
             epsilon (float):
-                Finite difference applied when computing the SPSA derivatives. Defaults to 10e-2.
+                Finite difference used when computing the SPSA derivatives. Defaults to 10e-2.
         """
 
         if 0.0 > lr:
@@ -110,8 +109,9 @@ class QuantumNaturalGradient(Optimizer):
                 Got {type(self.circuit)}"""
             )
 
-        self._params_dict = _identify_circuit_vparams(model, self.circuit)
-        params = list(self._params_dict.values())
+        circ_vparams = _identify_circuit_vparams(model, self.circuit)
+        self.vparams_keys = list(circ_vparams.keys())
+        vparams_values = list(circ_vparams.values())
 
         defaults = dict(
             lr=lr,
@@ -120,7 +120,7 @@ class QuantumNaturalGradient(Optimizer):
             epsilon=epsilon,
         )
 
-        super().__init__(params, defaults)
+        super().__init__(vparams_values, defaults)
 
         if len(self.param_groups) != 1:
             raise ValueError("QNG doesn't support per-parameter options (parameter groups)")
@@ -149,14 +149,14 @@ class QuantumNaturalGradient(Optimizer):
         epsilon = group["epsilon"]
         lr = group["lr"]
         circuit = self.circuit
-        vparams_dict = self._params_dict
-        vparams = group["params"]
-        grad_vec = torch.tensor([v.grad.data for v in vparams])
+        vparams_keys = self.vparams_keys
+        vparams_values = group["params"]
+        grad_vec = torch.tensor([v.grad.data for v in vparams_values])
 
         if approximation == FisherApproximation.EXACT:
-            qng_exact(vparams, grad_vec, vparams_dict, lr, circuit, beta)
+            qng_exact(vparams_values, vparams_keys, grad_vec, lr, circuit, beta)
         elif approximation == FisherApproximation.SPSA:
-            qng_spsa(vparams, grad_vec, vparams_dict, lr, circuit, self.state, epsilon, beta)
+            qng_spsa(vparams_values, vparams_keys, grad_vec, lr, circuit, self.state, epsilon, beta)
         else:
             raise NotImplementedError(
                 f"""Approximation {approximation} of the QNG optimizer
@@ -168,9 +168,9 @@ class QuantumNaturalGradient(Optimizer):
 
 
 def qng_exact(
-    vparams: list,
-    grad_vec: list,
-    vparams_dict: dict,
+    vparams_values: list,
+    vparams_keys: list,
+    grad_vec: torch.Tensor,
     lr: float,
     circuit: QuantumCircuit,
     beta: float,
@@ -179,7 +179,9 @@ def qng_exact(
 
     See :class:`~qadence_libs.qinfo_tools.QuantumNaturalGradient` for details.
     """
+
     # EXACT metric tensor
+    vparams_dict = dict(zip(vparams_keys, vparams_values))
     metric_tensor = 0.25 * get_quantum_fisher(
         circuit,
         vparams_dict=vparams_dict,
@@ -196,15 +198,14 @@ def qng_exact(
             driver="gelsd",
         ).solution
 
-        # Update parameters
-        for i, p in enumerate(vparams):
+        for i, p in enumerate(vparams_values):
             p.data.add_(transf_grad[i], alpha=-lr)
 
 
 def qng_spsa(
-    vparams: list,
-    grad_vec: list,
-    vparams_dict: dict,
+    vparams_values: list,
+    vparams_keys: list,
+    grad_vec: torch.Tensor,
     lr: float,
     circuit: QuantumCircuit,
     state: dict,
@@ -215,7 +216,9 @@ def qng_spsa(
 
     See :class:`~qadence_libs.qinfo_tools.QuantumNaturalGradient` for details.
     """
+
     # Get estimation of the QFI matrix
+    vparams_dict = dict(zip(vparams_keys, vparams_values))
     qfi_estimator, qfi_mat_positive_sd = get_quantum_fisher_spsa(
         circuit=circuit,
         iteration=state["iter"],
@@ -232,8 +235,7 @@ def qng_spsa(
         driver="gelsd",
     ).solution
 
-    # Update parameters
-    for i, p in enumerate(vparams):
+    for i, p in enumerate(vparams_values):
         if p.grad is None:
             continue
         p.data.add_(transf_grad[i], alpha=-lr)
