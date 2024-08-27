@@ -115,7 +115,7 @@ for i in range(n_epochs_adam):
 ### QNG
 The way to initialize the `QuantumNaturalGradient` optimizer in `qadence-libs` is slightly different from other usual Torch optimizers. Normally, one needs to pass a `params` argument to the optimizer to specify which parameters of the model should be optimized. In the `QuantumNaturalGradient`, it is assumed that all *circuit* parameters are to be optimized, whereas the *non-circuit* parameters will not be optimized. By circuit parameters, we mean parameters that somehow affect the quantum gates of the circuit and therefore influence the final quantum state. Any parameters affecting the observable (such as ouput scaling or shifting) are not considered circuit parameters, as those parameters will not be included in the QFI matrix as they don't affect the final state of the circuit.
 
-The `QuantumNaturalGradient` constructor takes a qadence's `QuantumModel` as the 'model', and it will automatically identify its circuit and non-circuit parameters. The `approximation` argument defaults to the SPSA method, however the exact version of the QNG is also implemented and can be used for small circuits (beware of using the exact version for large circuits, as it scales badly). $\beta$ is a small constant added to the QFI matrix before inversion to ensure numerical stability, 
+The `QuantumNaturalGradient` constructor takes a qadence's `QuantumModel` as the 'model', and it will automatically identify its circuit and non-circuit parameters. The `approximation` argument defaults to the SPSA method, however the exact version of the QNG is also implemented and can be used for small circuits (beware of using the exact version for large circuits, as it scales badly). $\beta$ is a small constant added to the QFI matrix before inversion to ensure numerical stability,
 
 $$(F_{ij} + \beta \mathbb{I})^{-1}$$
 
@@ -144,7 +144,7 @@ for i in range(n_epochs_qng):
 ```
 
 ### QNG-SPSA
-The QNG-SPSA optimizer can be constructed similarly to the exact QNG, where now a new argument $\epsilon$ is used to control the shift used in the finite differences derivatives of the SPSA algorithm.  
+The QNG-SPSA optimizer can be constructed similarly to the exact QNG, where now a new argument $\epsilon$ is used to control the shift used in the finite differences derivatives of the SPSA algorithm.
 
 ```python exec="on" source="material-block" html="1" session="main"
 # Train with QNG-SPSA
