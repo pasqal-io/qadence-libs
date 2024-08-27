@@ -97,8 +97,7 @@ class QuantumNaturalGradient(Optimizer):
 
         if not isinstance(model, QuantumModel):
             raise TypeError(
-                f"""The model should be an instance of '<class QuantumModel>'
-                or '<class TransformedModule>'. Got {type(model)}."""
+                f"The model should be an instance of '<class QuantumModel>'. Got {type(model)}."
             )
 
         self.model = model
