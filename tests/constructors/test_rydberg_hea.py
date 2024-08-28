@@ -6,7 +6,7 @@ from qadence.blocks import CompositeBlock
 from qadence.blocks.analog import ConstantAnalogRotation
 from qadence.circuit import QuantumCircuit
 from qadence.constructors import hamiltonian_factory, total_magnetization
-from qadence.models import QuantumModel
+from qadence.model import QuantumModel
 from qadence.operations import AnalogRY, X
 from qadence.parameters import VariationalParameter
 from qadence.register import Register
